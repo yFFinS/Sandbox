@@ -1,28 +1,40 @@
-﻿using Microsoft.Xna.Framework;
+﻿using Checkers.Core;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace Checkers;
+namespace Checkers.View;
 
 public class GameMain : Game
 {
     private readonly GraphicsDeviceManager _graphics;
 
-    private Board _board = null!;
+    private readonly Board _board;
     private BoardView _boardView = null!;
     private InputApi _inputApi = null!;
 
-    public GameMain(string[] args)
+    public GameMain(IReadOnlyList<string> args)
     {
         _graphics = new GraphicsDeviceManager(this);
         IsMouseVisible = true;
         Content.RootDirectory = "Content";
+
+        var boardSize = Board.StandardSize;
+        if (args.Count == 1 && int.TryParse(args[0], out var argBoardSize))
+        {
+            if (Board.IsValidBoardSize(argBoardSize))
+            {
+                boardSize = argBoardSize;
+            }
+        }
+
+        _board = new Board(boardSize);
     }
 
     protected override void Initialize()
     {
         _graphics.IsFullScreen = false;
-        _graphics.PreferredBackBufferWidth = 640;
-        _graphics.PreferredBackBufferHeight = 640;
+        _graphics.PreferredBackBufferWidth = 720;
+        _graphics.PreferredBackBufferHeight = 720;
         _graphics.ApplyChanges();
 
         base.Initialize();
@@ -31,9 +43,6 @@ public class GameMain : Game
     protected override void LoadContent()
     {
         InitializeApis();
-
-
-        _board = new Board(8);
         _boardView = new BoardView(_graphics.GraphicsDevice, _board);
     }
 
@@ -42,7 +51,7 @@ public class GameMain : Game
         var fontApi = new FontApi();
 
         const string uiFontName = "UIFont";
-        var uiFont = Content.Load<SpriteFont>($"Fonts/{uiFontName}");
+        var uiFont = Content.Load<SpriteFont>(Path.Combine("Fonts", uiFontName));
         fontApi.AddFont(uiFontName, uiFont);
         fontApi.SetDefaultUiFont(uiFontName);
 
@@ -63,7 +72,7 @@ public class GameMain : Game
     protected override void Update(GameTime gameTime)
     {
         _inputApi.Update(gameTime);
-        
+
         _boardView.Update(gameTime);
         base.Update(gameTime);
     }

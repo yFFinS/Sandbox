@@ -1,4 +1,4 @@
-﻿namespace Checkers;
+﻿namespace Checkers.View;
 
 public static class Program
 {

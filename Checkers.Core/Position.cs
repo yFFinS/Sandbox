@@ -1,4 +1,4 @@
-﻿namespace Checkers;
+﻿namespace Checkers.Core;
 
 public struct Position : IEquatable<Position>
 {
@@ -11,30 +11,33 @@ public struct Position : IEquatable<Position>
         Y = y;
     }
 
-    public Position Offset(int dx, int dy, int distance = 1)
+    public readonly Position Offset(int dx, int dy, int distance = 1)
     {
         return new Position(X + dx * distance, Y + dy * distance);
     }
 
-    public Position OffsetTowards(Position position, int distance = 1)
+    public readonly Position OffsetTowards(Position position, int distance = 1)
     {
         var (dx, dy) = DirectionTo(position);
         return Offset(dx, dy, distance);
     }
 
-    public bool Equals(Position other)
+    public readonly bool Equals(Position other)
     {
         return X == other.X && Y == other.Y;
     }
 
-    public override bool Equals(object? obj)
+    public readonly override bool Equals(object? obj)
     {
         return obj is Position other && Equals(other);
     }
 
-    public override int GetHashCode()
+    public readonly override int GetHashCode()
     {
-        return HashCode.Combine(X, Y);
+        unchecked
+        {
+            return (X * 397) ^ Y;
+        }
     }
 
     public static bool operator ==(Position left, Position right)
@@ -47,12 +50,12 @@ public struct Position : IEquatable<Position>
         return !left.Equals(right);
     }
 
-    public (int dx, int dy) DirectionTo(Position to)
+    public readonly (int dx, int dy) DirectionTo(Position to)
     {
         return (Math.Sign(to.X - X), Math.Sign(to.Y - Y));
     }
 
-    public int DistanceTo(Position to)
+    public readonly int DistanceTo(Position to)
     {
         return Math.Abs(to.X - X);
     }

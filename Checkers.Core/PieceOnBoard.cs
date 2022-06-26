@@ -1,4 +1,4 @@
-﻿namespace Checkers;
+﻿namespace Checkers.Core;
 
 public readonly struct PieceOnBoard
 {
@@ -9,10 +9,5 @@ public readonly struct PieceOnBoard
     {
         Position = position;
         Piece = piece;
-    }
-
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(Position, Piece);
     }
 }

@@ -1,21 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
-namespace Checkers;
-
-public static class EnumHelper
-{
-    public static Dictionary<TEnum, TValue?> CreateValueMap<TEnum, TValue>() where TEnum : struct, Enum
-    {
-        var map = new Dictionary<TEnum, TValue?>();
-        foreach (var value in Enum.GetValues<TEnum>())
-        {
-            map[value] = default;
-        }
-
-        return map;
-    }
-}
+namespace Checkers.View;
 
 internal class InputApi
 {
@@ -56,7 +42,7 @@ internal class InputApi
     private void ProcessKeyboard(KeyboardState keyboardState)
     {
         var pressedKeys = keyboardState.GetPressedKeys().ToHashSet();
-        var releasedKeys = _keyStates.Keys.Where(key => !pressedKeys.Contains(key));
+        var releasedKeys = _keyStates.Keys.Where(key => !pressedKeys.Contains(key)).ToArray();
         foreach (var pressedKey in pressedKeys)
         {
             _keyStates[pressedKey] = _keyStates[pressedKey] switch
@@ -99,48 +85,4 @@ internal class InputApi
 
     public FrameKeyState GetKeyState(Keys key) => _keyStates[key];
     public FrameButtonState GetButtonState(int index) => _buttons[index];
-}
-
-public static class Input
-{
-    private static InputApi _api = null!;
-
-    public static Point MousePosition => _api.MousePosition;
-
-    internal static void SetApi(InputApi api)
-    {
-        _api = api;
-    }
-
-    public static bool IsKeyUp(Keys key)
-    {
-        return _api.GetKeyState(key) == InputApi.FrameKeyState.ReleasedThisFrame;
-    }
-
-    public static bool IsKeyDown(Keys key)
-    {
-        return _api.GetKeyState(key) == InputApi.FrameKeyState.PressedThisFrame;
-    }
-
-    public static bool IsKey(Keys key)
-    {
-        var frameKeyState = _api.GetKeyState(key);
-        return frameKeyState is InputApi.FrameKeyState.Pressed or InputApi.FrameKeyState.PressedThisFrame;
-    }
-
-    public static bool IsButtonUp(int button)
-    {
-        return _api.GetButtonState(button) == InputApi.FrameButtonState.ReleasedThisFrame;
-    }
-
-    public static bool IsButtonDown(int button)
-    {
-        return _api.GetButtonState(button) == InputApi.FrameButtonState.PressedThisFrame;
-    }
-
-    public static bool IsButton(int button)
-    {
-        var frameButtonState = _api.GetButtonState(button);
-        return frameButtonState is InputApi.FrameButtonState.Pressed or InputApi.FrameButtonState.PressedThisFrame;
-    }
 }

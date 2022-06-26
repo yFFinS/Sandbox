@@ -1,4 +1,4 @@
-﻿namespace Checkers;
+﻿namespace Checkers.Core;
 
 public enum PieceType
 {
