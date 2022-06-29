@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using System.Runtime.CompilerServices;
 
 namespace Checkers.Core;
 
@@ -14,6 +15,11 @@ public class MoveGenerator
     {
         _board = board;
         _cachingEnabled = cachingEnabled;
+        _cachedMoves = null;
+
+        var rowsWithPieces = _board.Size - 2;
+        var piecesPerRow = _board.Size / 2;
+        _pieceBuffer = new PieceOnBoard[rowsWithPieces * piecesPerRow];
     }
 
     public void ClearCache()
@@ -48,39 +54,50 @@ public class MoveGenerator
 
         foreach (var move in GenerateAllMovesDoesNotRespectCapture(onlyCurrentTurn))
         {
-            if (!hasCapturingMove && IsCapturingMove(move))
+            var isCapturing = IsCapturingMove(move);
+            if (!hasCapturingMove && isCapturing)
             {
                 hasCapturingMove = true;
-                moves = moves.Where(IsCapturingMove).ToList();
+                var tempMoves = new List<Move>(moves.Count);
+                foreach (var tempMove in moves)
+                {
+                    if (IsCapturingMove(tempMove))
+                    {
+                        tempMoves.Add(tempMove);
+                    }
+                }
+
+                moves = tempMoves;
             }
 
-            if (!hasCapturingMove || hasCapturingMove && IsCapturingMove(move))
+            if (!hasCapturingMove || hasCapturingMove && isCapturing)
             {
                 moves.Add(move);
             }
         }
 
-        return hasCapturingMove ? FilterIncorrectQueenMoves(moves).ToList() : moves;
+        return hasCapturingMove ? GetCorrectQueenMoves(moves) : moves;
     }
 
-    private IEnumerable<Move> FilterIncorrectQueenMoves(IEnumerable<Move> capturingMoves)
+    private List<Move> GetCorrectQueenMoves(IReadOnlyList<Move> capturingMoves)
     {
-        var queenMoves = new Dictionary<Position, List<Move>>();
+        var correctMoves = new List<Move>();
+        var queenGroups = new Dictionary<Position, List<Move>>();
 
         foreach (var capturingMove in capturingMoves)
         {
             var piece = capturingMove.PieceOnBoard.Piece;
             if (piece.Type != PieceType.Queen && !ShouldPromote(capturingMove.Path, piece.Color))
             {
-                yield return capturingMove;
+                correctMoves.Add(capturingMove);
                 continue;
             }
 
             var position = capturingMove.PieceOnBoard.Position;
-            if (!queenMoves.TryGetValue(position, out var positionQueenMoves))
+            if (!queenGroups.TryGetValue(position, out var positionQueenMoves))
             {
                 positionQueenMoves = new List<Move>();
-                queenMoves[position] = positionQueenMoves;
+                queenGroups[position] = positionQueenMoves;
             }
 
             positionQueenMoves.Add(capturingMove);
@@ -88,43 +105,78 @@ public class MoveGenerator
 
         IEnumerable<Move> FindCorrectMoves(IReadOnlyList<Move> moves, int pathLength)
         {
-            bool PathDoesNotEnded(Move move) => move.Path.Count > pathLength;
+            var filteredMoves = new List<Move>();
+            foreach (var move in moves)
+            {
+                if (move.Path.Count > pathLength)
+                {
+                    filteredMoves.Add(move);
+                }
+            }
 
-            var filteredMoves = moves.Where(PathDoesNotEnded).ToArray();
-            if (filteredMoves.Length == 0)
+            if (filteredMoves.Count == 0)
             {
                 foreach (var move in moves)
                 {
                     yield return move;
                 }
+
+                yield break;
             }
 
-            var groups = filteredMoves.GroupBy(move => move.Path[pathLength - 1])
-                .ToDictionary(g => g.Key, g => g.ToArray());
-            foreach (var move in groups.SelectMany(group =>
-                         FindCorrectMoves(group.Value, pathLength + 1)))
+            var collidingGroups = GroupMovesByPositionCollision(moves, pathLength);
+            foreach (var collidingMoves in collidingGroups.Values)
             {
-                yield return move;
+                foreach (var correctMove in FindCorrectMoves(collidingMoves, pathLength + 1))
+                {
+                    yield return correctMove;
+                }
             }
         }
 
-        foreach (var correctMove in queenMoves.Values.SelectMany(moves => FindCorrectMoves(moves, 1)))
+        foreach (var queenMoves in queenGroups.Values)
         {
-            yield return correctMove;
+            correctMoves.AddRange(FindCorrectMoves(queenMoves, 1));
         }
+
+        return correctMoves;
+    }
+
+    private static Dictionary<Position, List<Move>> GroupMovesByPositionCollision(IReadOnlyList<Move> moves,
+        int pathLength)
+    {
+        var groups = new Dictionary<Position, List<Move>>();
+        foreach (var move in moves)
+        {
+            var position = move.Path[pathLength - 1];
+            if (!groups.TryGetValue(position, out var collidingMoves))
+            {
+                collidingMoves = new List<Move> { move };
+                groups[position] = collidingMoves;
+            }
+            else
+            {
+                collidingMoves.Add(move);
+            }
+        }
+
+        return groups;
     }
 
     private IEnumerable<Move> GenerateAllMovesDoesNotRespectCapture(bool onlyCurrentTurn = true)
     {
-        var allPieces = _board.GetAllPieces();
-        var pieceOnBoards =
-            onlyCurrentTurn ? allPieces.Where(piece => piece.Piece.Color == _board.CurrentTurn) : allPieces;
-        foreach (var pieceOnBoard in pieceOnBoards)
+        var pieces = new List<PieceOnBoard>();
+        foreach (var pieceOnBoard in _board.GetAllPieces())
         {
-            foreach (var move in GenerateMovesForPieceDoesNotRespectCapture(pieceOnBoard))
+            if (onlyCurrentTurn && pieceOnBoard.Piece.Color == _board.CurrentTurn || !onlyCurrentTurn)
             {
-                yield return move;
+                pieces.Add(pieceOnBoard);
             }
+        }
+
+        foreach (var move in pieces.SelectMany(GenerateMovesForPieceDoesNotRespectCapture))
+        {
+            yield return move;
         }
     }
 
@@ -148,7 +200,67 @@ public class MoveGenerator
 
             for (var moveDistance = 1; moveDistance <= (isQueen ? _board.Size : 2); moveDistance++)
             {
-                var target = position.Offset(dx * moveDistance, dy * moveDistance);
+                var target = position.OffsetBy(dx * moveDistance, dy * moveDistance);
+                if (!_board.IsInBounds(target))
+                {
+                    break;
+                }
+
+                var isWayClear = true;
+                for (var distance = 1; distance <= moveDistance; distance++)
+                {
+                    if (_board.IsEmpty(position.X + distance * dx, position.Y + distance * dy))
+                    {
+                        continue;
+                    }
+
+                    isWayClear = false;
+                    break;
+                }
+
+                if (isWayClear && (isQueen || (moveDistance == 1 && dy == nonCaptureVerticalDirectionForPawn)))
+                {
+                    yield return new Move(piece, new[] { target });
+                }
+                else if (moveDistance > 1 && TryGetCapturePosition(piece, position, target, out var capturePosition))
+                {
+                    var traversedPath = new List<Position> { target };
+                    var ignored = new List<Position> { position, capturePosition, target };
+                    foreach (var path in GenerateFullCapturePaths(piece, traversedPath, ignored))
+                    {
+                        yield return new Move(piece, path);
+                    }
+                }
+            }
+        }
+    }
+
+    [Flags]
+    public enum MovementFlags
+    {
+        NonCapturing = 1 << 0,
+        Capturing = 1 << 1,
+        Any = NonCapturing | Capturing
+    }
+
+    public bool CanPieceMove(PieceOnBoard piece, MovementFlags flags = MovementFlags.Any)
+    {
+        var pieceColor = piece.Piece.Color;
+        var position = piece.Position;
+        var isQueen = piece.Piece.Type == PieceType.Queen;
+        var nonCaptureVerticalDirectionForPawn = pieceColor == PieceColor.Black ? 1 : -1;
+
+        var startMoveDistance = (flags & MovementFlags.NonCapturing) != 0 ? 1 : 2;
+        var endMoveDistance = (flags & MovementFlags.Capturing) == 0 ? 1 : 2;
+
+        foreach (var direction in Directions)
+        {
+            var dx = direction.X;
+            var dy = direction.Y;
+
+            for (var moveDistance = startMoveDistance; moveDistance <= endMoveDistance; moveDistance++)
+            {
+                var target = position.OffsetBy(dx * moveDistance, dy * moveDistance);
                 if (!_board.IsInBounds(target))
                 {
                     break;
@@ -158,35 +270,32 @@ public class MoveGenerator
                 var wayPosition = new Position(position.X, position.Y);
                 for (var distance = 1; distance <= moveDistance; distance++)
                 {
-                    wayPosition.X += dx;
-                    wayPosition.Y += dy;
-                    var pieceOnWay = _board.GetPieceAt(wayPosition);
-                    if (!pieceOnWay.IsEmpty)
+                    wayPosition = wayPosition.OffsetBy(dx, dy);
+                    if (_board.IsEmpty(wayPosition))
                     {
-                        isWayClear = false;
-                        break;
+                        continue;
                     }
+
+                    isWayClear = false;
+                    break;
                 }
 
-                if (isWayClear && (isQueen || (moveDistance == 1 && dy == nonCaptureVerticalDirectionForPawn)))
+                if (isWayClear && (isQueen || dy == nonCaptureVerticalDirectionForPawn))
                 {
-                    yield return new Move(piece, new[] { target });
+                    return true;
                 }
-                else if (moveDistance > 1 &&
-                         TryGetCapturePosition(piece.Piece, position, target, out var capturePosition))
+
+                if (moveDistance > 1 && TryGetCapturePosition(piece, position, target, out _))
                 {
-                    var traversedPath = new List<Position> { target };
-                    var ignored = new HashSet<Position> { position, capturePosition, target };
-                    foreach (var path in GenerateFullCapturePaths(piece.Piece, traversedPath, ignored))
-                    {
-                        yield return new Move(piece, path);
-                    }
+                    return true;
                 }
             }
         }
+
+        return false;
     }
 
-    private Position? TryGetQueenPromotionPosition(IEnumerable<Position> traversedPath, PieceColor color)
+    private Position? TryGetQueenPromotionPosition(IReadOnlyList<Position> traversedPath, in PieceColor color)
     {
         foreach (var position in traversedPath)
         {
@@ -199,13 +308,13 @@ public class MoveGenerator
         return null;
     }
 
-    private IEnumerable<List<Position>> GenerateFullCapturePaths(Piece piece,
+    private IEnumerable<List<Position>> GenerateFullCapturePaths(PieceOnBoard piece,
         List<Position> traversedPath,
-        ISet<Position> ignored)
+        List<Position> ignored)
     {
         var canMoveFurther = false;
         var position = traversedPath.Last();
-        var isQueen = piece.Type == PieceType.Queen || ShouldPromote(traversedPath, piece.Color);
+        var isQueen = piece.Piece.Type == PieceType.Queen || ShouldPromote(traversedPath, piece.Piece.Color);
         foreach (var direction in Directions)
         {
             var dx = direction.X;
@@ -213,7 +322,7 @@ public class MoveGenerator
 
             for (var moveDistance = 2; moveDistance <= (isQueen ? _board.Size : 2); moveDistance++)
             {
-                var endPosition = position.Offset(dx, dy, moveDistance);
+                var endPosition = position.OffsetBy(dx, dy, moveDistance);
                 if (!_board.IsInBounds(endPosition))
                 {
                     break;
@@ -226,7 +335,7 @@ public class MoveGenerator
 
                 canMoveFurther = true;
                 var newPath = traversedPath.Append(endPosition).ToList();
-                var newIgnored = new HashSet<Position>(ignored)
+                var newIgnored = new List<Position>(ignored)
                 {
                     capturePosition,
                     endPosition
@@ -245,45 +354,49 @@ public class MoveGenerator
         }
     }
 
-    public bool IsCapturingMove(Move move)
+    private bool IsCapturingMove(in Move move)
     {
         return GetAllMoveCaptures(move).Any();
     }
 
-    public IEnumerable<Position> GetAllMoveCaptures(Move move)
+    public List<Position> GetAllMoveCaptures(in Move move)
     {
-        var ignored = new HashSet<Position> { move.PieceOnBoard.Position };
+        var captures = new List<Position>();
         var currentPosition = move.PieceOnBoard.Position;
+
         foreach (var position in move.Path)
         {
-            if (TryGetCapturePosition(move.PieceOnBoard.Piece, currentPosition, position,
-                    out var capturePosition, ignored))
+            if (TryGetCapturePosition(move.PieceOnBoard, currentPosition, position,
+                    out var capturePosition, captures))
             {
-                ignored.Add(capturePosition);
-                yield return capturePosition;
+                captures.Add(capturePosition);
             }
 
             currentPosition = position;
         }
+
+        return captures;
     }
 
-    public bool ShouldPromote(Position currentPosition, PieceColor color)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private bool ShouldPromote(in Position currentPosition, in PieceColor color)
     {
         return currentPosition.Y == 0 && color == PieceColor.White ||
                currentPosition.Y == _board.Size - 1 && color == PieceColor.Black;
     }
 
-    public bool ShouldPromote(IEnumerable<Position> traversedPath, PieceColor color)
+    public bool ShouldPromote(IReadOnlyList<Position> traversedPath, in PieceColor color)
     {
         return TryGetQueenPromotionPosition(traversedPath, color).HasValue;
     }
 
-    private bool TryGetCapturePosition(Piece piece, Position from, Position to, out Position capturePosition,
-        ISet<Position>? ignored = null)
+    private bool TryGetCapturePosition(PieceOnBoard piece, in Position from, in Position to,
+        out Position capturePosition,
+        List<Position>? ignored = null)
     {
-        bool IsIgnored(Position position)
+        bool IsIgnored(in Position position)
         {
-            return ignored is not null && ignored.Contains(position);
+            return piece.Position == position || ignored is not null && ignored.Contains(position);
         }
 
         capturePosition = new Position();
@@ -301,10 +414,9 @@ public class MoveGenerator
         var wayPosition = new Position(from.X, from.Y);
         for (var distance = 1; distance <= moveDistance; distance++)
         {
-            wayPosition.X += dx;
-            wayPosition.Y += dy;
-            var pieceOnWay = _board.GetPieceAt(wayPosition);
+            wayPosition = wayPosition.OffsetBy(dx, dy);
 
+            var pieceOnWay = _board.GetPieceAt(wayPosition);
             if (pieceOnWay.IsEmpty || IsIgnored(wayPosition))
             {
                 continue;
@@ -324,13 +436,30 @@ public class MoveGenerator
         }
 
         capturePosition = captured.Position;
-        return captured.Piece.Color != piece.Color;
+        return captured.Piece.Color != piece.Piece.Color;
     }
 
-    public MoveFullInfo GetMoveFullInfo(Move move)
+    public MoveFullInfo GetMoveFullInfo(in Move move)
     {
         var capturedPositions = GetAllMoveCaptures(move).ToArray();
         var promotionPosition = TryGetQueenPromotionPosition(move.Path, move.PieceOnBoard.Piece.Color);
         return new MoveFullInfo(move, capturedPositions, promotionPosition);
+    }
+
+    private readonly PieceOnBoard[] _pieceBuffer;
+
+    public bool HasAnyMove(in PieceColor color)
+    {
+        var count = _board.GetAllPiecesNonAlloc(_pieceBuffer);
+        for (var i = 0; i < count; i++)
+        {
+            var pieceOnBoard = _pieceBuffer[i];
+            if (pieceOnBoard.Piece.Color == color && CanPieceMove(pieceOnBoard))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -26,10 +26,36 @@ public class BoardView
     private readonly BoardDrawer _boardDrawer;
     private readonly Board _board;
 
-    private readonly AbstractBoardController _whitePlayer;
-    private readonly AbstractBoardController _blackPlayer;
+    private AbstractBoardController? _whitePlayer;
+    private AbstractBoardController? _blackPlayer;
 
     private PieceColor _lastTurn;
+    private readonly BoardIntermediateDisplay _display;
+    private bool _isStarted;
+
+    public void SetWhitePlayer(AbstractBoardController controller)
+    {
+        _whitePlayer = controller;
+        _whitePlayer.Initialize(_board, _display);
+    }
+
+    public void SetBlackPlayer(AbstractBoardController controller)
+    {
+        _blackPlayer = controller;
+        _blackPlayer.Initialize(_board, _display);
+    }
+
+    public void Start()
+    {
+        if (_isStarted)
+        {
+            return;
+        }
+
+        _isStarted = true;
+        _lastTurn = _board.CurrentTurn;
+        StartTurnAs(_lastTurn);
+    }
 
     public BoardView(GraphicsDevice device, Board board)
     {
@@ -39,18 +65,9 @@ public class BoardView
         _boardDrawer = new BoardDrawer(device);
         _boardDrawer.SetTargetBoard(_board);
 
-        var display = new BoardIntermediateDisplay(_board, _boardDrawer);
-
-        _whitePlayer = new PlayerController();
-        _whitePlayer.Initialize(_board, display);
-
-        _blackPlayer = new AiController();
-        _blackPlayer.Initialize(_board, display);
+        _display = new BoardIntermediateDisplay(_board, _boardDrawer);
 
         UpdateCellSize();
-
-        _lastTurn = _board.CurrentTurn;
-        StartTurnAs(_lastTurn);
     }
 
     private void StartTurnAs(PieceColor color)
@@ -73,15 +90,15 @@ public class BoardView
 
     private void StartBlackTurn()
     {
-        _whitePlayer.SetMyTurn(false);
-        _blackPlayer.SetMyTurn(true);
+        _whitePlayer!.SetMyTurn(false);
+        _blackPlayer!.SetMyTurn(true);
         Console.WriteLine("=== Starting Black's turn ===");
     }
 
     private void StartWhiteTurn()
     {
-        _blackPlayer.SetMyTurn(false);
-        _whitePlayer.SetMyTurn(true);
+        _blackPlayer!.SetMyTurn(false);
+        _whitePlayer!.SetMyTurn(true);
         Console.WriteLine("=== Starting White's turn ===");
     }
 
@@ -95,10 +112,15 @@ public class BoardView
 
     public void Update(GameTime gameTime)
     {
+        if (!_isStarted)
+        {
+            return;
+        }
+
         var visitor = new ControllerVisitor();
 
-        _whitePlayer.Update(gameTime, visitor);
-        _blackPlayer.Update(gameTime, visitor);
+        _whitePlayer!.Update(gameTime, visitor);
+        _blackPlayer!.Update(gameTime, visitor);
 
         if (visitor.GameRestartPending)
         {

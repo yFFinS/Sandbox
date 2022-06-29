@@ -1,55 +1,37 @@
 ﻿using System.Drawing;
+using System.Runtime.CompilerServices;
 
 namespace Checkers.Core;
-
-public class HeuristicAnalyzerConfig
-{
-    public const int VictoryScore = int.MaxValue;
-    public const int DefeatScore = -VictoryScore;
-    public const int DrawScore = DefeatScore / 2;
-    public const int MaxRandomScoreExclusive = 10;
-
-    public int PawnScorePerCellFromBorder { get; set; } = -5;
-    public int QueenScorePerCellFromBorder { get; set; } = 5;
-    public int PromotionCellFreeScore { get; set; } = 20;
-    public int PawnMovableScore { get; set; } = 60;
-    public int QueenMovableScore { get; set; } = 25;
-    public int PawnAtBorderScore { get; set; } = 50;
-    public int QueenAtBorderScore { get; set; } = 20;
-    public int PawnAliveScore { get; set; } = 350;
-    public int QueenAliveScore { get; set; } = 1000;
-    public int PieceCountDifferenceScore { get; set; } = 50;
-    public int DefenderPieceScore { get; set; } = 15;
-    public int AttackerPawnScore { get; set; } = 20;
-    public int CentralPawnScore { get; set; } = 30;
-    public int MainDiagonalPawnScore { get; set; } = 40;
-    public int MainDiagonalQueenScore { get; set; } = 70;
-    public int DoubleDiagonalPawnScore { get; set; } = 30;
-    public int DoubleDiagonalQueenScore { get; set; } = 60;
-    public int LonerPawnScore { get; set; } = 50;
-    public int LonerQueenScore { get; set; } = 100;
-    public int HoleScore { get; set; } = 170;
-    public int TriangleScore { get; set; } = 120;
-    public int OreoScore { get; set; } = 90;
-    public int BridgeScore { get; set; } = 100;
-    public int DogScore { get; set; } = 250;
-    public int CorneredQueen { get; set; } = 500;
-    public int CorneredPawn { get; set; } = 100;
-}
 
 public class BoardHeuristicAnalyzer
 {
     private readonly Random _random = new(264343821);
 
     private PieceColor _fromPerspective;
-    private readonly HeuristicAnalyzerConfig _config = new();
+    private HeuristicAnalyzerConfig _config;
+
+    public BoardHeuristicAnalyzer()
+    {
+        _config = new HeuristicAnalyzerConfig();
+    }
+
+    public BoardHeuristicAnalyzer(HeuristicAnalyzerConfig config)
+    {
+        _config = config.Copy();
+    }
+
+    public void Configure(HeuristicAnalyzerConfig config)
+    {
+        _config = config.Copy();
+    }
 
     public void Configure(Action<HeuristicAnalyzerConfig> configurator)
     {
         configurator(_config);
+        _config = _config.Copy();
     }
 
-    public int EvaluateBoard(Board board, PieceColor fromPerspective)
+    public int EvaluateBoard(Board board, in PieceColor fromPerspective)
     {
         _fromPerspective = fromPerspective;
 
@@ -78,18 +60,32 @@ public class BoardHeuristicAnalyzer
         score += EvaluateDogs(board);
         score += EvaluateCorneredPieces(board);
 
+        score += EvaluateStalemate(board, score);
+
         score *= 10;
         score += _random.Next(HeuristicAnalyzerConfig.MaxRandomScoreExclusive);
 
         return score;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private int EvaluateStalemate(Board board, int score)
+    {
+        var beforeStalemateTurns = Board.MaxStalemateTurns - board.StalemateTurns;
+        var beforeMaxTurnTurns = Board.MaxTurns - board.TurnCount;
+
+        var sign = Math.Sign(score);
+        return sign * (beforeStalemateTurns * HeuristicAnalyzerConfig.PerTurnBeforeStalemateScore +
+                       beforeMaxTurnTurns * HeuristicAnalyzerConfig.PerTurnBeforeMaxTurnsScore);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     private int EvaluateCorneredPieces(Board board)
     {
         var score = 0;
 
-        var topRightPiece = board.GetPieceAt(new Position(board.Size - 1, 0));
-        var bottomLeftPiece = board.GetPieceAt(new Position(0, board.Size - 1));
+        var topRightPiece = board.GetPieceAt(board.Size - 1, 0);
+        var bottomLeftPiece = board.GetPieceAt(0, board.Size - 1);
 
         if (!topRightPiece.IsEmpty)
         {
@@ -104,26 +100,27 @@ public class BoardHeuristicAnalyzer
         return score;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     private int EvaluateDogs(Board board)
     {
         var score = 0;
 
-        var topRowPiece = board.GetPieceAt(new Position(1, 0));
+        var topRowPiece = board.GetPieceAt(1, 0);
         if (!topRowPiece.IsEmpty && topRowPiece.Color == PieceColor.Black)
         {
-            var doggedPiece = board.GetPieceAt(new Position(0, 1));
-            if (!doggedPiece.IsEmpty && doggedPiece.Color == PieceColor.White)
+            var doggedPiece = board.GetPieceAt(0, 1);
+            if (!doggedPiece.IsEmpty && doggedPiece.Color == PieceColor.White && doggedPiece.Type == PieceType.Pawn)
             {
                 score += GetSign(PieceColor.Black) * _config.DogScore;
             }
         }
 
         var boardSize = board.Size;
-        var bottomRowPiece = board.GetPieceAt(new Position(boardSize - 2, boardSize - 1));
+        var bottomRowPiece = board.GetPieceAt(boardSize - 2, boardSize - 1);
         if (!bottomRowPiece.IsEmpty && bottomRowPiece.Color == PieceColor.White)
         {
-            var doggedPiece = board.GetPieceAt(new Position(boardSize - 1, boardSize - 2));
-            if (!doggedPiece.IsEmpty && doggedPiece.Color == PieceColor.Black)
+            var doggedPiece = board.GetPieceAt(boardSize - 1, boardSize - 2);
+            if (!doggedPiece.IsEmpty && doggedPiece.Color == PieceColor.Black && doggedPiece.Type == PieceType.Pawn)
             {
                 score += GetSign(PieceColor.White) * _config.DogScore;
             }
@@ -132,64 +129,59 @@ public class BoardHeuristicAnalyzer
         return score;
     }
 
-    private int EvaluateBridges(Board board)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private static bool IsBridge(in Piece leftPiece, in Piece rightPiece, in PieceColor color)
     {
-        (bool, PieceColor) TryGetBridgeColor(int x, int y)
+        if (leftPiece.IsEmpty || rightPiece.IsEmpty)
         {
-            var leftPosition = new Position(x, y);
-            var rightPosition = new Position(x + 3, y);
-
-            var leftPiece = board.GetPieceAt(leftPosition);
-            if (leftPiece.IsEmpty)
-            {
-                return (false, PieceColor.Black);
-            }
-
-            var rightPiece = board.GetPieceAt(rightPosition);
-            return (!rightPiece.IsEmpty && rightPiece.Color == leftPiece.Color, leftPiece.Color);
+            return false;
         }
 
-        var score = 0;
-        for (var x = 0; x < board.Size - 4; x += 2)
+        if (leftPiece.Type == PieceType.Pawn || rightPiece.Type == PieceType.Pawn)
         {
-            for (var y = 0; y < board.Size; y++)
-            {
-                var (success, color) = TryGetBridgeColor(x, y);
-                if (success && (color == PieceColor.White && y >= board.Size / 2 + 1 ||
-                                color == PieceColor.Black && y < board.Size / 2 - 1))
-                {
-                    score += GetSign(color) * _config.BridgeScore;
-                }
-            }
+            return false;
+        }
+
+        return leftPiece.Color == color && rightPiece.Color == color;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private int EvaluateBridges(Board board)
+    {
+        var score = 0;
+
+        var bottomLeftPiece = board.GetPieceAt(2, board.Size - 1);
+        var bottomRightPiece = board.GetPieceAt(board.Size - 2, board.Size - 1);
+
+        if (IsBridge(bottomLeftPiece, bottomRightPiece, PieceColor.White))
+        {
+            score += GetSign(PieceColor.White) * _config.BridgeScore;
+        }
+
+        var topLeftPiece = board.GetPieceAt(1, 0);
+        var topRightPiece = board.GetPieceAt(board.Size - 3, 0);
+
+        if (IsBridge(topLeftPiece, topRightPiece, PieceColor.Black))
+        {
+            score += GetSign(PieceColor.Black) * _config.BridgeScore;
         }
 
         return score;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     private int EvaluateOreos(Board board)
     {
         var score = 0;
 
-        for (var y = board.Size - 1; y > board.Size / 2; y--)
+        if (IsTriangle(board, 3, board.Size - 2, PieceColor.White))
         {
-            for (var x = 3; x < board.Size - 3; x += 2)
-            {
-                if (IsTriangle(board, x, y, PieceColor.White))
-                {
-                    score += GetSign(PieceColor.White) * _config.OreoScore;
-                }
-            }
+            score += GetSign(PieceColor.White) * _config.OreoScore;
         }
 
-        for (var y = 1; y < board.Size / 2; y++)
+        if (IsTriangle(board, board.Size - 4, 1, PieceColor.Black))
         {
-            for (var x = 3; x < board.Size - 3; x += 2)
-            {
-                if (IsTriangle(board, x, y, PieceColor.Black))
-                {
-                    score += GetSign(PieceColor.Black) * _config.OreoScore;
-                }
-            }
+            score += GetSign(PieceColor.Black) * _config.OreoScore;
         }
 
         return score;
@@ -197,11 +189,11 @@ public class BoardHeuristicAnalyzer
 
     private static readonly int[] OneDimensionalDirections = { -1, 1 };
 
-    private bool IsTriangle(Board board, int x, int y, PieceColor color)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private static bool IsTriangle(Board board, int x, int y, in PieceColor color)
     {
-        var pivot = new Position(x, y);
-        var pivotPiece = board.GetPieceAt(pivot);
-        if (pivotPiece.IsEmpty || pivotPiece.Color != color)
+        var pivotPiece = board.GetPieceAt(x, y);
+        if (pivotPiece.IsEmpty || pivotPiece.Color != color || pivotPiece.Type != PieceType.Pawn)
         {
             return false;
         }
@@ -209,9 +201,8 @@ public class BoardHeuristicAnalyzer
         var dy = color == PieceColor.White ? 1 : -1;
         foreach (var dx in OneDimensionalDirections)
         {
-            var position = pivot.Offset(dx, dy);
-            var piece = board.GetPieceAt(position);
-            if (piece.IsEmpty || piece.Color != color)
+            var piece = board.GetPieceAt(x + dx, y + dy);
+            if (piece.IsEmpty || piece.Color != color || piece.Type != PieceType.Pawn)
             {
                 return false;
             }
@@ -220,82 +211,82 @@ public class BoardHeuristicAnalyzer
         return true;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     private int EvaluateTriangles(Board board)
     {
         var score = 0;
 
-        for (var y = board.Size - 1; y > board.Size / 2; y--)
+        if (IsTriangle(board, board.Size - 3, board.Size - 2, PieceColor.White))
         {
-            if (IsTriangle(board, board.Size - 3, y, PieceColor.White))
-            {
-                score += GetSign(PieceColor.White) * _config.TriangleScore;
-            }
+            score += GetSign(PieceColor.White) * _config.TriangleScore;
         }
 
-        for (var y = 1; y < board.Size / 2; y++)
+        if (IsTriangle(board, 2, 1, PieceColor.Black))
         {
-            if (IsTriangle(board, 2, y, PieceColor.Black))
-            {
-                score += GetSign(PieceColor.Black) * _config.TriangleScore;
-            }
+            score += GetSign(PieceColor.Black) * _config.TriangleScore;
         }
 
         return score;
     }
 
-    private int EvaluateHoles(Board board)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private PieceColor? TryGetHoleOppositeColor(Board board, int x, int y)
     {
-        (bool success, PieceColor color) TryGetHoleOppositeColor(int x, int y)
+        var position = new Position(x, y);
+        if (!board.IsEmpty(position))
         {
-            var position = new Position(x, y);
-            if (!board.GetPieceAt(position).IsEmpty)
-            {
-                return (false, PieceColor.Black);
-            }
-
-            var whites = 0;
-            var blacks = 0;
-            foreach (var adjacentPosition in GetAdjacentPositions(board, position))
-            {
-                var piece = board.GetPieceAt(adjacentPosition);
-                if (piece.IsEmpty)
-                {
-                    continue;
-                }
-
-                if (piece.Color == PieceColor.White)
-                {
-                    whites++;
-                }
-                else
-                {
-                    blacks++;
-                }
-            }
-
-            if (whites >= 3)
-            {
-                return (true, PieceColor.Black);
-            }
-
-            if (blacks >= 3)
-            {
-                return (true, PieceColor.White);
-            }
-
-            return (false, PieceColor.Black);
+            return null;
         }
 
+        var whites = 0;
+        var blacks = 0;
+
+        var count = GetAdjacentPositionNonAlloc(board, position, _positionBuffer);
+        for (var i = 0; i < count; i++)
+        {
+            var adjacentPosition = _positionBuffer[i];
+            var piece = board.GetPieceAt(adjacentPosition);
+            if (piece.IsEmpty)
+            {
+                continue;
+            }
+
+            if (piece.Color == PieceColor.White)
+            {
+                whites++;
+            }
+            else
+            {
+                blacks++;
+            }
+        }
+
+        if (whites >= 3)
+        {
+            return PieceColor.Black;
+        }
+
+        if (blacks >= 3)
+        {
+            return PieceColor.White;
+        }
+
+        return null;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private int EvaluateHoles(Board board)
+    {
         var score = 0;
 
         for (var x = 1; x < board.Size - 1; x++)
         {
             for (var y = 1 + x % 2; y < board.Size - 2 + x % 2; y++)
             {
-                var (success, color) = TryGetHoleOppositeColor(x, y);
-                if (success)
+                var color = TryGetHoleOppositeColor(board, x, y);
+                if (color.HasValue)
                 {
-                    score += GetSign(color) * _config.HoleScore;
+                    score += GetSign(color.Value) * _config.HoleScore;
                 }
             }
         }
@@ -303,17 +294,19 @@ public class BoardHeuristicAnalyzer
         return score;
     }
 
-    private int EvaluateMainDiagonalPieces(int boardSize, IEnumerable<PieceOnBoard> pieceOnBoards)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private static bool IsOnMainDiagonal(int boardSize, in Position position)
     {
-        bool IsOnMainDiagonal(Position position)
-        {
-            return position.X + position.Y == boardSize - 1;
-        }
+        return position.X + position.Y == boardSize - 1;
+    }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private int EvaluateMainDiagonalPieces(int boardSize, PieceOnBoard[] pieceOnBoards)
+    {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)
         {
-            if (IsOnMainDiagonal(pieceOnBoard.Position))
+            if (IsOnMainDiagonal(boardSize, pieceOnBoard.Position))
             {
                 score += MatchPiece(pieceOnBoard.Piece, _config.MainDiagonalPawnScore, _config.MainDiagonalQueenScore);
             }
@@ -322,13 +315,14 @@ public class BoardHeuristicAnalyzer
         return score;
     }
 
-    private int EvaluateDoubleDiagonalPieces(IEnumerable<PieceOnBoard> pieceOnBoards)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private static bool IsOnDoubleDiagonal(in Position position)
     {
-        bool IsOnDoubleDiagonal(Position position)
-        {
-            return Math.Abs(position.X - position.Y) == 1;
-        }
+        return Math.Abs(position.X - position.Y) == 1;
+    }
 
+    private int EvaluateDoubleDiagonalPieces(PieceOnBoard[] pieceOnBoards)
+    {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)
         {
@@ -342,23 +336,23 @@ public class BoardHeuristicAnalyzer
         return score;
     }
 
-    private int EvaluateCentralPawns(int boardSize, IEnumerable<PieceOnBoard> pieceOnBoards)
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private static bool IsCentralPawn(int centerMin, int centerMax, in Position position)
+    {
+        return position.X >= centerMin && position.X <= centerMax && position.Y >= centerMin && position.Y <= centerMax;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private int EvaluateCentralPawns(int boardSize, PieceOnBoard[] pieceOnBoards)
     {
         var centerMin = boardSize / 2 - 2;
         var centerMax = boardSize / 2 + 1;
 
-        bool IsCentralPawn(Position position)
-        {
-            return position.X >= centerMin
-                   && position.X <= centerMax
-                   && position.Y >= centerMin
-                   && position.Y <= centerMax;
-        }
-
         var score = 0;
-        foreach (var pieceOnBoard in pieceOnBoards.Where(p => p.Piece.Type == PieceType.Pawn))
+        foreach (var pieceOnBoard in pieceOnBoards)
         {
-            if (IsCentralPawn(pieceOnBoard.Position))
+            if (pieceOnBoard.Piece.Type == PieceType.Pawn && IsCentralPawn(centerMin, centerMax, pieceOnBoard.Position))
             {
                 score += GetSign(pieceOnBoard.Piece.Color) * _config.CentralPawnScore;
             }
@@ -367,19 +361,26 @@ public class BoardHeuristicAnalyzer
         return score;
     }
 
-    private int EvaluateAttackerPawns(int boardSize, IEnumerable<PieceOnBoard> pieceOnBoards)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private static bool IsAttackerPawn(int boardSize, in Position position, in PieceColor color)
     {
-        bool IsAttackerPawn(Position position, PieceColor color)
-        {
-            return position.Y <= 2 && color == PieceColor.White ||
-                   position.Y >= boardSize - 3 && color == PieceColor.Black;
-        }
+        return position.Y <= 2 && color == PieceColor.White ||
+               position.Y >= boardSize - 3 && color == PieceColor.Black;
+    }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private int EvaluateAttackerPawns(int boardSize, PieceOnBoard[] pieceOnBoards)
+    {
         var score = 0;
-        foreach (var pieceOnBoard in pieceOnBoards.Where(p => p.Piece.Type == PieceType.Pawn))
+        foreach (var pieceOnBoard in pieceOnBoards)
         {
+            if (pieceOnBoard.Piece.Type != PieceType.Pawn)
+            {
+                continue;
+            }
+
             var color = pieceOnBoard.Piece.Color;
-            if (IsAttackerPawn(pieceOnBoard.Position, color))
+            if (IsAttackerPawn(boardSize, pieceOnBoard.Position, color))
             {
                 score += GetSign(color) * _config.AttackerPawnScore;
             }
@@ -390,47 +391,80 @@ public class BoardHeuristicAnalyzer
 
     private static readonly Point[] Directions = { new(-1, -1), new(-1, 1), new(1, -1), new(1, 1) };
 
-    private static IEnumerable<Position> GetAdjacentPositions(Board board, Position position)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private static int GetAdjacentPositionNonAlloc(Board board, Position position, IList<Position> buffer)
     {
+        var bufferIndex = 0;
         foreach (var direction in Directions)
         {
-            var newPosition = position.Offset(direction.X, direction.Y);
+            var newPosition = new Position(position.X + direction.X, position.Y + direction.Y);
             if (board.IsInBounds(newPosition))
             {
-                yield return newPosition;
+                buffer[bufferIndex++] = newPosition;
             }
         }
+
+        return bufferIndex;
     }
 
-    private static IEnumerable<Position> GetMovablePositions(Board board, PieceOnBoard pieceOnBoard)
+    private readonly Position[] _positionBuffer = new Position[4];
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private static int GetMovablePositionsNonAlloc(Board board, PieceOnBoard pieceOnBoard, IList<Position>? buffer)
     {
         var color = pieceOnBoard.Piece.Color;
-        foreach (var adjacentPosition in GetAdjacentPositions(board, pieceOnBoard.Position))
+        var position = pieceOnBoard.Position;
+
+        var bufferIndex = 0;
+        foreach (var direction in Directions)
         {
-            var direction = pieceOnBoard.Position.DirectionTo(adjacentPosition);
-            if (direction.dy == 1 && color == PieceColor.White || direction.dy == -1 && color == PieceColor.Black)
+            if (direction.Y == 1 && color == PieceColor.White || direction.Y == -1 && color == PieceColor.Black)
             {
                 continue;
             }
 
-            if (board.GetPieceAt(adjacentPosition).IsEmpty)
+            var newPosition = new Position(position.X + direction.X, position.Y + direction.Y);
+            if (!board.IsInBounds(newPosition))
             {
-                yield return adjacentPosition;
+                continue;
+            }
+
+            if (board.IsEmpty(newPosition))
+            {
+                if (buffer is not null)
+                {
+                    buffer[bufferIndex] = newPosition;
+                }
+
+                bufferIndex++;
             }
         }
+
+        return bufferIndex;
     }
 
-    private int EvaluateLonerPieces(Board board, IEnumerable<PieceOnBoard> pieceOnBoards)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private bool IsLonerPiece(Board board, in Position position)
     {
-        bool IsLonerPiece(Position position)
+        var count = GetAdjacentPositionNonAlloc(board, position, _positionBuffer);
+        for (var i = 0; i < count; i++)
         {
-            return GetAdjacentPositions(board, position).All(pos => board.GetPieceAt(pos).IsEmpty);
+            if (!board.IsEmpty(_positionBuffer[i]))
+            {
+                return false;
+            }
         }
 
+        return true;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private int EvaluateLonerPieces(Board board, PieceOnBoard[] pieceOnBoards)
+    {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)
         {
-            if (IsLonerPiece(pieceOnBoard.Position))
+            if (IsLonerPiece(board, pieceOnBoard.Position))
             {
                 score += MatchPiece(pieceOnBoard.Piece, _config.LonerPawnScore, _config.LonerQueenScore);
             }
@@ -439,30 +473,34 @@ public class BoardHeuristicAnalyzer
         return score;
     }
 
-    private int GetSign(PieceColor color)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private int GetSign(in PieceColor color)
     {
         return color == _fromPerspective ? 1 : -1;
     }
 
-    private int MatchPiece(Piece piece, int pawnValue, int queenValue)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private int MatchPiece(in Piece piece, int pawnValue, int queenValue)
     {
         var sign = GetSign(piece.Color);
         return sign * (piece.Type == PieceType.Pawn ? pawnValue : queenValue);
     }
 
-    private int EvaluateDefenderPieces(int boardSize, IEnumerable<PieceOnBoard> pieceOnBoards)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private static bool IsDefenderPiece(int boardSize, in Position position, in PieceColor color)
     {
-        bool IsDefenderPiece(Position position, PieceColor color)
-        {
-            return position.Y <= 1 && color == PieceColor.Black ||
-                   position.Y >= boardSize - 2 && color == PieceColor.White;
-        }
+        return position.Y <= 1 && color == PieceColor.Black ||
+               position.Y >= boardSize - 2 && color == PieceColor.White;
+    }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private int EvaluateDefenderPieces(int boardSize, PieceOnBoard[] pieceOnBoards)
+    {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)
         {
             var color = pieceOnBoard.Piece.Color;
-            if (IsDefenderPiece(pieceOnBoard.Position, color))
+            if (IsDefenderPiece(boardSize, pieceOnBoard.Position, color))
             {
                 score += GetSign(color) * _config.DefenderPieceScore;
             }
@@ -471,38 +509,59 @@ public class BoardHeuristicAnalyzer
         return score;
     }
 
-    private int EvaluateDifferenceInPieceCount(IReadOnlyCollection<PieceOnBoard> pieceOnBoards)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private int EvaluateDifferenceInPieceCount(PieceOnBoard[] pieceOnBoards)
     {
-        var whiteCount = pieceOnBoards.Count(p => p.Piece.Color == PieceColor.White);
-        var blackCount = pieceOnBoards.Count - whiteCount;
-        return GetSign(_fromPerspective) * (blackCount - whiteCount) * _config.PieceCountDifferenceScore;
+        var whitePieces = 0;
+        var blackPieces = 0;
+        foreach (var pieceOnBoard in pieceOnBoards)
+        {
+            if (pieceOnBoard.Piece.Color == PieceColor.White)
+            {
+                whitePieces++;
+            }
+            else
+            {
+                blackPieces++;
+            }
+        }
+
+        var difference = blackPieces - whitePieces;
+        if (_fromPerspective == PieceColor.White)
+        {
+            difference *= -1;
+        }
+
+        return difference * _config.PieceCountDifferenceScore;
     }
 
-    private int EvaluateDistanceFromPromotionLines(int boardSize, IEnumerable<PieceOnBoard> pieceOnBoards)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private int EvaluateDistanceFromPromotionLines(int boardSize, PieceOnBoard[] pieceOnBoards)
     {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)
         {
             var position = pieceOnBoard.Position;
-            var distanceFromBorder =
+            var distanceFromPromotion =
                 pieceOnBoard.Piece.Color == PieceColor.Black ? boardSize - 1 - position.Y : position.Y;
-            score += distanceFromBorder * MatchPiece(pieceOnBoard.Piece, _config.PawnScorePerCellFromBorder,
+            score += distanceFromPromotion * MatchPiece(pieceOnBoard.Piece, _config.PawnScorePerCellFromBorder,
                 _config.QueenScorePerCellFromBorder);
         }
 
         return score;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     private int EvaluateFreePromotionCells(Board board)
     {
         var score = 0;
 
-        foreach (var y in new[] { 0, board.Size - 1 })
+        for (var i = 0; i < 2; i++)
         {
+            var y = i == 0 ? 0 : board.Size - 1;
             for (var x = 1 - y % 2; x < board.Size; x += 2)
             {
-                var position = new Position(x, y);
-                if (!board.GetPieceAt(position).IsEmpty)
+                if (!board.IsEmpty(x, y))
                 {
                     continue;
                 }
@@ -515,33 +574,41 @@ public class BoardHeuristicAnalyzer
         return score;
     }
 
-    private int EvaluateMovablePieces(Board board, IEnumerable<PieceOnBoard> pieceOnBoards)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private static bool IsMovable(Board board, in PieceOnBoard pieceOnBoard)
     {
-        bool IsMovable(PieceOnBoard pieceOnBoard)
-        {
-            return GetMovablePositions(board, pieceOnBoard).Any();
-        }
+        var count = GetMovablePositionsNonAlloc(board, pieceOnBoard, null);
+        return count > 0;
+    }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private int EvaluateMovablePieces(Board board, PieceOnBoard[] pieceOnBoards)
+    {
         var score = 0;
-        foreach (var pieceOnBoard in pieceOnBoards.Where(IsMovable))
+        foreach (var pieceOnBoard in pieceOnBoards)
         {
-            score += MatchPiece(pieceOnBoard.Piece, _config.PawnMovableScore, _config.QueenMovableScore);
+            if (IsMovable(board, pieceOnBoard))
+            {
+                score += MatchPiece(pieceOnBoard.Piece, _config.PawnMovableScore, _config.QueenMovableScore);
+            }
         }
 
         return score;
     }
 
-    private int EvaluateSafePieces(int boardSize, IEnumerable<PieceOnBoard> pieceOnBoards)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private static bool IsAtBorder(int boardSize, in Position position)
     {
-        bool IsAtBorder(Position position)
-        {
-            return position.X == 0 || position.X == boardSize - 1 || position.Y == 0 || position.Y == boardSize - 1;
-        }
+        return position.X == 0 || position.X == boardSize - 1 || position.Y == 0 || position.Y == boardSize - 1;
+    }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private int EvaluateSafePieces(int boardSize, PieceOnBoard[] pieceOnBoards)
+    {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)
         {
-            if (IsAtBorder(pieceOnBoard.Position))
+            if (IsAtBorder(boardSize, pieceOnBoard.Position))
             {
                 score += MatchPiece(pieceOnBoard.Piece, _config.PawnAtBorderScore, _config.QueenAtBorderScore);
             }
@@ -550,7 +617,8 @@ public class BoardHeuristicAnalyzer
         return score;
     }
 
-    private int EvaluateAlivePieces(IEnumerable<PieceOnBoard> pieceOnBoards)
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+    private int EvaluateAlivePieces(PieceOnBoard[] pieceOnBoards)
     {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)
@@ -561,6 +629,7 @@ public class BoardHeuristicAnalyzer
         return score;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     public int GetGameEndScore(GameEndState gameEndState)
     {
         switch (gameEndState)

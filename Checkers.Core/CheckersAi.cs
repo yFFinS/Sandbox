@@ -24,7 +24,7 @@ public class CheckersAi
 
     public EvaluatedMove GetNextMove(bool extractFullMoveSequence = false)
     {
-        var moves = RateMoves(extractFullMoveSequence).ToArray();
+        var moves = RateMoves(extractFullMoveSequence);
         var bestMove = moves[0];
         foreach (var evaluatedMove in moves)
         {

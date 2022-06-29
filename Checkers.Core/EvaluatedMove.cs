@@ -1,8 +1,8 @@
 ﻿namespace Checkers.Core;
 
-public class EvaluatedMove
+public struct EvaluatedMove
 {
-    public Move Move { get; set; }
-    public IReadOnlyList<Move>? FullMoveSequence { get; set; }
-    public int Score { get; set; }
+    public Move Move { get; init; }
+    public IReadOnlyList<Move>? FullMoveSequence { get; init; }
+    public int Score { get; init; }
 }

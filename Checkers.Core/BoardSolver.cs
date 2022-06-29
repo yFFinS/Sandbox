@@ -5,7 +5,7 @@ namespace Checkers.Core;
 public class BoardSolver
 {
     public readonly BoardHeuristicAnalyzer Analyzer;
-    public readonly SolverConfig Config;
+    private readonly SolverConfig _config;
 
     private TextWriter? _logger;
 
@@ -15,7 +15,7 @@ public class BoardSolver
     public BoardSolver(BoardHeuristicAnalyzer analyzer)
     {
         Analyzer = analyzer;
-        Config = new SolverConfig();
+        _config = new SolverConfig();
     }
 
     public void EnableLogging(TextWriter logger)
@@ -30,33 +30,33 @@ public class BoardSolver
 
     public void Configure(Action<SolverConfig> configurator)
     {
-        configurator(Config);
+        configurator(_config);
     }
 
     private static IEnumerable<(Board board, Move move)> GenerateNextMoves(Board board)
     {
         foreach (var move in board.MoveGenerator.GenerateAllMoves())
         {
-            var newBoard = board.Copy();
+            var newBoard = BoardSolverMemoryAllocator.RequestBoardCopy(board);
             newBoard.MakeMove(move);
             yield return (newBoard, move);
         }
     }
 
-    private BoardMovesTreeNode BuildMoveTree(Board board, int maxDepth)
+    private BoardMovesTreeNode BuildMoveTree(Board board, int maxDepth, bool useMultithreading = false)
     {
         var root = new BoardMovesTreeNode
         {
             Board = board
         };
 
-        ReevaluateTree(root, maxDepth);
+        ReevaluateTree(root, maxDepth, useMultithreading);
         return root;
     }
 
-    private void ReevaluateTree(BoardMovesTreeNode root, int maxDepth)
+    private void ReevaluateTree(BoardMovesTreeNode root, int maxDepth, bool useMultithreading = false)
     {
-        if (!Config.UsingMultithreading)
+        if (!useMultithreading)
         {
             LazyAlphaBeta(root, maxDepth, int.MinValue, int.MaxValue, true);
             return;
@@ -86,17 +86,29 @@ public class BoardSolver
     {
         foreach (var (newBoard, move) in GenerateNextMoves(node.Board!))
         {
-            var child = new BoardMovesTreeNode
-            {
-                Board = newBoard,
-                LeadingMove = move,
-                Parent = node
-            };
-
-            node.Children.Add(child);
+            node.Children.Add(
+                new BoardMovesTreeNode
+                {
+                    Board = newBoard,
+                    LeadingMove = move,
+                    Parent = node
+                });
         }
 
         node.IsExpanded = true;
+    }
+
+    private static void FreeUsedBoards(BoardMovesTreeNode node)
+    {
+        if (node.Board is not null && !node.IsRoot)
+        {
+            BoardSolverMemoryAllocator.FreeBoard(node.Board);
+        }
+
+        foreach (var child in node.Children)
+        {
+            FreeUsedBoards(child);
+        }
     }
 
     public EvaluatedMove[] EvaluateMoves(Board board, bool extractFullMoveSequence = false)
@@ -104,44 +116,49 @@ public class BoardSolver
         _fromPerspective = board.CurrentTurn;
         _extractingFullPath = extractFullMoveSequence;
 
-        if (Config.MaxEvaluationTime < 0)
+        BoardMovesTreeNode? root = null;
+
+        if (_config.MaxEvaluationTime < 0)
         {
-            return EvaluateMoves(board, Config.MaxSearchDepth);
+            root = BuildMoveTree(board, _config.MaxSearchDepth, _config.UsingMultithreading);
+            var result = ToEvaluatedMoves(root);
+            FreeUsedBoards(root);
+            return result;
         }
 
-        var startTicks = Stopwatch.GetTimestamp();
-        var maxSearchDepth = Config.MaxSearchDepth == SolverConfig.UnlimitedSearchDepth
+        var startTime = Stopwatch.StartNew();
+        var maxSearchDepth = _config.MaxSearchDepth == SolverConfig.UnlimitedSearchDepth
             ? int.MaxValue - 1
-            : Config.MaxSearchDepth;
+            : _config.MaxSearchDepth;
 
         var lastPassedTime = 0.0f;
 
-        BoardMovesTreeNode? root = null;
         foreach (var depth in Enumerable.Range(1, maxSearchDepth))
         {
             if (root is null)
             {
-                root = BuildMoveTree(board, depth);
+                root = BuildMoveTree(board, depth, _config.UsingMultithreading);
             }
             else
             {
                 ResetTreeScores(root);
-                ReevaluateTree(root, depth);
+                ReevaluateTree(root, depth, _config.UsingMultithreading);
             }
 
             var lastEvaluated = ToEvaluatedMoves(root);
+            var passedTime = startTime.ElapsedMilliseconds / 1000f;
 
-            var ticks = Stopwatch.GetTimestamp();
-            var passedTime = (float)(ticks - startTicks) / Stopwatch.Frequency;
             _logger?.WriteLine("Passed time: {0:F2}s. Evaluated depth: {1}.", passedTime, depth);
 
             if (root.Children.Count == 1 && !_extractingFullPath)
             {
+                FreeUsedBoards(root);
                 return lastEvaluated;
             }
 
-            if (2 * passedTime - lastPassedTime >= Config.MaxEvaluationTime || depth == maxSearchDepth)
+            if (2 * passedTime - lastPassedTime >= _config.MaxEvaluationTime || depth == maxSearchDepth)
             {
+                FreeUsedBoards(root);
                 return lastEvaluated;
             }
 
@@ -153,48 +170,41 @@ public class BoardSolver
 
     public static float GetWinPercentFromScore(int score)
     {
-        const float alpha = 4;
-        return 100f / (1 + (float)Math.Exp(-2 * alpha * score / Math.Sqrt(int.MaxValue)));
+        const float alpha = 0.00001f;
+        return 100f / (1 + (float)Math.Exp(-2 * alpha * score));
     }
 
-    private EvaluatedMove[] EvaluateMoves(Board board, int maxDepth)
+    private static BoardMovesTreeNode FindClosestBestNode(BoardMovesTreeNode root)
     {
-        var root = BuildMoveTree(board, maxDepth);
-        return ToEvaluatedMoves(root);
+        var queue = new Queue<BoardMovesTreeNode>();
+        queue.Enqueue(root);
+
+        while (queue.Count > 0)
+        {
+            var node = queue.Dequeue();
+            if (node.Children.Count == 0)
+            {
+                return node;
+            }
+
+            foreach (var child in node.Children.Where(child => child.Score == node.Score))
+            {
+                queue.Enqueue(child);
+            }
+        }
+
+        throw new ArgumentException("Invalid tree structure.", nameof(root));
     }
 
     private EvaluatedMove[] ToEvaluatedMoves(BoardMovesTreeNode root)
     {
-        BoardMovesTreeNode? lastNode;
-
-        void FindMoveSequencePath(BoardMovesTreeNode node)
-        {
-            if (lastNode is not null)
-            {
-                return;
-            }
-
-            var hasAny = false;
-            foreach (var child in node.Children.Where(child => child.Score == node.Score))
-            {
-                hasAny = true;
-                FindMoveSequencePath(child);
-            }
-
-            if (!hasAny)
-            {
-                lastNode = node;
-            }
-        }
-
         var evaluatedMoves = root.Children.Select(child =>
         {
             List<Move>? fullMoveSequence = null;
             if (_extractingFullPath)
             {
                 fullMoveSequence = new List<Move>();
-                lastNode = null;
-                FindMoveSequencePath(root);
+                var lastNode = FindClosestBestNode(root);
 
                 while (lastNode?.LeadingMove != null)
                 {

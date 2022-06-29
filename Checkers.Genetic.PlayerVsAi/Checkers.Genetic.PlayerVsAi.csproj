@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Checkers.Genetic.Player</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Checkers.Genetic\Checkers.Genetic.csproj" />
+      <ProjectReference Include="..\Checkers.View\Checkers.View.csproj" />
+    </ItemGroup>
+
+</Project>

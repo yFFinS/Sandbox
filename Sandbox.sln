@@ -4,6 +4,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers.View", "Checkers.V
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers.Core", "Checkers.Core\Checkers.Core.csproj", "{ADD7542F-A9CF-47F9-85BD-C5504EECA149}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers.Genetic", "Checkers.Genetic\Checkers.Genetic.csproj", "{AEF937E2-6308-4D64-A2C0-46F912627757}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers.Genetic.Simulation", "Checkers.Genetic.Simulation\Checkers.Genetic.Simulation.csproj", "{24A4FD22-6C4A-40E8-9C46-3C9F44E5E1EF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers.Genetic.PlayerVsAi", "Checkers.Genetic.PlayerVsAi\Checkers.Genetic.PlayerVsAi.csproj", "{F259BE93-DDF4-4326-B105-4327C69B435A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers.Genetic.AiVsAi", "Checkers.Genetic.AiVsAi\Checkers.Genetic.AiVsAi.csproj", "{2C8EF4E7-70A2-4C7B-9AD9-C55BBBA2C544}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers.Genetic.FindBestGenome", "Checkers.Genetic.FindBestGenome\Checkers.Genetic.FindBestGenome.csproj", "{1815DF07-CC4B-4D1F-AE8D-DD30A69BEFE2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +28,25 @@ Global
 		{ADD7542F-A9CF-47F9-85BD-C5504EECA149}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ADD7542F-A9CF-47F9-85BD-C5504EECA149}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ADD7542F-A9CF-47F9-85BD-C5504EECA149}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AEF937E2-6308-4D64-A2C0-46F912627757}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AEF937E2-6308-4D64-A2C0-46F912627757}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AEF937E2-6308-4D64-A2C0-46F912627757}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AEF937E2-6308-4D64-A2C0-46F912627757}.Release|Any CPU.Build.0 = Release|Any CPU
+		{24A4FD22-6C4A-40E8-9C46-3C9F44E5E1EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{24A4FD22-6C4A-40E8-9C46-3C9F44E5E1EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{24A4FD22-6C4A-40E8-9C46-3C9F44E5E1EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{24A4FD22-6C4A-40E8-9C46-3C9F44E5E1EF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F259BE93-DDF4-4326-B105-4327C69B435A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F259BE93-DDF4-4326-B105-4327C69B435A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F259BE93-DDF4-4326-B105-4327C69B435A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F259BE93-DDF4-4326-B105-4327C69B435A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2C8EF4E7-70A2-4C7B-9AD9-C55BBBA2C544}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C8EF4E7-70A2-4C7B-9AD9-C55BBBA2C544}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C8EF4E7-70A2-4C7B-9AD9-C55BBBA2C544}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C8EF4E7-70A2-4C7B-9AD9-C55BBBA2C544}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1815DF07-CC4B-4D1F-AE8D-DD30A69BEFE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1815DF07-CC4B-4D1F-AE8D-DD30A69BEFE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1815DF07-CC4B-4D1F-AE8D-DD30A69BEFE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1815DF07-CC4B-4D1F-AE8D-DD30A69BEFE2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

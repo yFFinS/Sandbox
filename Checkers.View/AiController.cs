@@ -7,7 +7,7 @@ namespace Checkers.View;
 
 public class AiController : AbstractBoardController
 {
-    private const float MinMoveTime = 1000;
+    private const long MinMoveTime = 1000;
 
     private CheckersAi _ai = null!;
     private bool _gameEnded;
@@ -23,20 +23,18 @@ public class AiController : AbstractBoardController
 
     private Task<EvaluatedMove>? _nextMoveTask;
 
+    public readonly BoardHeuristicAnalyzer Analyzer;
+    public readonly BoardSolver Solver;
+
+    public AiController()
+    {
+        Analyzer = new BoardHeuristicAnalyzer();
+        Solver = new BoardSolver(Analyzer);
+    }
+
     public override void OnInitialized()
     {
-        var analyzer = new BoardHeuristicAnalyzer();
-        var solver = new BoardSolver(analyzer);
-        solver.EnableLogging(Console.Out);
-
-        solver.Configure(config =>
-        {
-            config.MaxSearchDepth = 20;
-            config.MaxEvaluationTime = 5;
-            config.UseMultithreading();
-        });
-
-        _ai = new CheckersAi(Board, solver);
+        _ai = new CheckersAi(Board, Solver);
         _ai.EnableLogging(Console.Out);
     }
 
@@ -88,11 +86,11 @@ public class AiController : AbstractBoardController
             }
 
             var move = _nextMoveTask.Result;
+            _nextMoveTask = null;
             Board.MakeMove(move.Move);
             IntermediateDisplay.SetMovePathCells(move.Move);
-            _nextMoveTask = null;
-
             visitor.PassTurn();
+            
             return;
         }
 
@@ -115,9 +113,9 @@ public class AiController : AbstractBoardController
 
         _nextMoveTask = Task.Run(async delegate
         {
-            var startTime = Stopwatch.GetTimestamp();
+            var startTime = Stopwatch.StartNew();
             var result = await _ai.GetNextMoveAsync();
-            var passedTime = (float)(Stopwatch.GetTimestamp() - startTime) / Stopwatch.Frequency;
+            var passedTime = startTime.ElapsedMilliseconds;
 
             if (passedTime < MinMoveTime)
             {

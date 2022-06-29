@@ -169,7 +169,7 @@ public class PlayerController : AbstractBoardController
             case 1:
             {
                 var move = collisions[0];
-                if (move.Move.Path.Last() == position)
+                if (move.Move.Path[^1] == position)
                 {
                     MakeMove(move.Move, visitor);
                     return;

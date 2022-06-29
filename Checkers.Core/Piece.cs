@@ -1,4 +1,6 @@
-﻿namespace Checkers.Core;
+﻿using System.Runtime.CompilerServices;
+
+namespace Checkers.Core;
 
 public readonly struct Piece
 {
@@ -14,6 +16,7 @@ public readonly struct Piece
     public PieceType Type => (_value & 2) == 0 ? PieceType.Pawn : PieceType.Queen;
     public PieceColor Color => (_value & 1) == 0 ? PieceColor.Black : PieceColor.White;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
     public Piece(PieceType type, PieceColor color)
     {
         _value = (byte)((type == PieceType.Pawn ? 0 : 2) + (color == PieceColor.Black ? 0 : 1));

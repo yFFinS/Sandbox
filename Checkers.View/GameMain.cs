@@ -9,12 +9,17 @@ public class GameMain : Game
     private readonly GraphicsDeviceManager _graphics;
 
     private readonly Board _board;
+
     private BoardView _boardView = null!;
     private InputApi _inputApi = null!;
+
+    private AbstractBoardController? _blackPlayer;
+    private AbstractBoardController? _whitePlayer;
 
     public GameMain(IReadOnlyList<string> args)
     {
         _graphics = new GraphicsDeviceManager(this);
+
         IsMouseVisible = true;
         Content.RootDirectory = "Content";
 
@@ -30,6 +35,17 @@ public class GameMain : Game
         _board = new Board(boardSize);
     }
 
+
+    public void SetWhitePlayer(AbstractBoardController controller)
+    {
+        _whitePlayer = controller;
+    }
+
+    public void SetBlackPlayer(AbstractBoardController controller)
+    {
+        _blackPlayer = controller;
+    }
+
     protected override void Initialize()
     {
         _graphics.IsFullScreen = false;
@@ -43,7 +59,16 @@ public class GameMain : Game
     protected override void LoadContent()
     {
         InitializeApis();
+
+        if (_whitePlayer is null || _blackPlayer is null)
+        {
+            throw new NullReferenceException();
+        }
+
         _boardView = new BoardView(_graphics.GraphicsDevice, _board);
+        _boardView.SetBlackPlayer(_blackPlayer);
+        _boardView.SetWhitePlayer(_whitePlayer);
+        _boardView.Start();
     }
 
     private void InitializeApis()

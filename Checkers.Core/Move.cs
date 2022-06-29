@@ -7,7 +7,8 @@ public readonly struct Move
 {
     public readonly PieceOnBoard PieceOnBoard;
     public readonly IReadOnlyList<Position> Path;
-    public Position EndPosition => Path.Last();
+    public Position EndPosition => Path[^1];
+
 
     public Move(PieceOnBoard pieceOnBoard, IReadOnlyList<Position> path)
     {

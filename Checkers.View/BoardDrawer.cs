@@ -220,6 +220,13 @@ public class BoardDrawer
         }
     }
 
+    private Move? _animatingMove;
+    
+    public void PlayMoveAnimation(Move move)
+    {
+        _animatingMove = move;
+    }
+
     private static bool IsBlackCell(int xi, int yi)
     {
         return (xi + yi) % 2 == 1;

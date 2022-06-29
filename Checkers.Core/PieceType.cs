@@ -1,6 +1,6 @@
 ﻿namespace Checkers.Core;
 
-public enum PieceType
+public enum PieceType : byte
 {
     Pawn,
     Queen

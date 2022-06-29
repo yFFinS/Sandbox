@@ -41,8 +41,8 @@ internal class InputApi
 
     private void ProcessKeyboard(KeyboardState keyboardState)
     {
-        var pressedKeys = keyboardState.GetPressedKeys().ToHashSet();
-        var releasedKeys = _keyStates.Keys.Where(key => !pressedKeys.Contains(key)).ToArray();
+        var pressedKeys = keyboardState.GetPressedKeys();
+
         foreach (var pressedKey in pressedKeys)
         {
             _keyStates[pressedKey] = _keyStates[pressedKey] switch
@@ -52,13 +52,16 @@ internal class InputApi
             };
         }
 
-        foreach (var releasedKey in releasedKeys)
+        foreach (var key in _keyStates.Keys)
         {
-            _keyStates[releasedKey] = _keyStates[releasedKey] switch
+            if (!pressedKeys.Contains(key))
             {
-                FrameKeyState.Pressed or FrameKeyState.PressedThisFrame => FrameKeyState.ReleasedThisFrame,
-                _ => FrameKeyState.Released
-            };
+                _keyStates[key] = _keyStates[key] switch
+                {
+                    FrameKeyState.Pressed or FrameKeyState.PressedThisFrame => FrameKeyState.ReleasedThisFrame,
+                    _ => FrameKeyState.Released
+                };
+            }
         }
     }
 

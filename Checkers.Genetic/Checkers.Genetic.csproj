@@ -4,8 +4,10 @@
         <TargetFramework>net6.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <RootNamespace>CheckersCore</RootNamespace>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Checkers.Core\Checkers.Core.csproj" />
+    </ItemGroup>
 
 </Project>

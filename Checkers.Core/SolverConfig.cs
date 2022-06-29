@@ -23,4 +23,9 @@ public class SolverConfig
     {
         UsingMultithreading = true;
     }
+
+    public SolverConfig Copy()
+    {
+        return (SolverConfig)MemberwiseClone();
+    }
 }
