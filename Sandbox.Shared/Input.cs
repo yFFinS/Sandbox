@@ -1,7 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
-namespace Checkers.View;
+namespace Sandbox.Shared;
 
 public static class Input
 {

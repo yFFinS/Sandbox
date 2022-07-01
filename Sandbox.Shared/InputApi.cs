@@ -1,11 +1,11 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 
-namespace Checkers.View;
+namespace Sandbox.Shared;
 
-internal class InputApi
+public class InputApi
 {
-    internal enum FrameKeyState
+    public enum FrameKeyState
     {
         Released = 0,
         Pressed = 1,
@@ -13,7 +13,7 @@ internal class InputApi
         ReleasedThisFrame = 3
     }
 
-    internal enum FrameButtonState
+    public enum FrameButtonState
     {
         Released = 0,
         Pressed = 1,

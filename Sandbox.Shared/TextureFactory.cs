@@ -1,9 +1,9 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace Checkers.View;
+namespace Sandbox.Shared;
 
-internal static class TextureFactory
+public static class TextureFactory
 {
     public static Texture2D CreateFilledRectTexture(GraphicsDevice device, Color color, int width = 1, int height = 1)
     {

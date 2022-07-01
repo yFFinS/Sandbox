@@ -6,13 +6,13 @@ namespace Checkers.View;
 public abstract class AbstractBoardController
 {
     protected Board Board { get; private set; } = null!;
-    protected BoardIntermediateDisplay IntermediateDisplay { get; private set; } = null!;
+    protected BoardDrawable Drawable { get; private set; } = null!;
     protected bool IsMyTurn { get; private set; }
 
-    public void Initialize(Board board, BoardIntermediateDisplay intermediateDisplay)
+    public void Initialize(Board board, BoardDrawable drawable)
     {
         Board = board;
-        IntermediateDisplay = intermediateDisplay;
+        Drawable = drawable;
         OnInitialized();
     }
 
@@ -24,16 +24,26 @@ public abstract class AbstractBoardController
     {
     }
 
-    public virtual void OnTurnBegan()
+    public void StartGame(bool isMyTurn)
+    {
+        IsMyTurn = isMyTurn;
+        OnGameStarted();
+    }
+
+    protected virtual void OnGameStarted()
     {
     }
 
-    public void SetMyTurn(bool isMyTurn)
+    public virtual void OnTurnBegan(MoveInfo opponentMoveInfo)
+    {
+    }
+
+    public void SetMyTurn(bool isMyTurn, MoveInfo opponentMoveInfo)
     {
         IsMyTurn = isMyTurn;
         if (IsMyTurn)
         {
-            OnTurnBegan();
+            OnTurnBegan(opponentMoveInfo);
         }
         else
         {

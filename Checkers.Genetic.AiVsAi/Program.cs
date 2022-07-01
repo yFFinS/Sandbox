@@ -8,7 +8,7 @@ var bestGenomes = simulation.FindBestGenomes(lastGeneration, 2);
 Console.WriteLine("Press any key to start playing...");
 Console.Read();
 
-var game = new GameMain(args);
+var game = new CheckersGameMain(args);
 
 var whiteAi = new AiController();
 var blackAi = new AiController();

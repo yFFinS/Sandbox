@@ -13,8 +13,6 @@ public class Simulation
 
     private const float ExtremeMutationChance = 0.075f;
 
-    private const float LoserSurvivalChance = 0.02f;
-
     private const int MatchesPerGenome = 4;
 
     private const int DrawScore = 0;
@@ -60,6 +58,8 @@ public class Simulation
             rightCompetitors.RemoveAt(0);
         }
 
+        Console.WriteLine();
+
         var competitors = leftCompetitors.Concat(rightCompetitors).ToList();
         var averagePlayTime = competitors.Average(comp => comp.PlayTime);
         var drawCount = competitors.Sum(comp => comp.Draws);
@@ -76,7 +76,7 @@ public class Simulation
         return new Generation(generation.Id + 1, nextGenerationGenomes.Concat(children), generation.GenerationRules);
     }
 
-    private List<Competitor> EliminateWorstCompetitors(IReadOnlyCollection<Competitor> competitors)
+    private static IEnumerable<Competitor> EliminateWorstCompetitors(IEnumerable<Competitor> competitors)
     {
         var orderedCompetitors = competitors.OrderByDescending(comp => comp.Score).ToList();
         return orderedCompetitors.GetRange(0, orderedCompetitors.Count / 2);
@@ -125,22 +125,20 @@ public class Simulation
         }
     }
 
-    private List<GenomePair> PairRandomly(IList<Genome> genomes)
+    private IEnumerable<GenomePair> PairRandomly(IList<Genome> genomes)
     {
         Shuffle(genomes);
-        var pairs = new List<GenomePair>();
+
         for (var i = 0; i < genomes.Count; i += 2)
         {
             var whiteSolver = genomes[i];
             var blackSolver = genomes[i + 1];
-            pairs.Add(new GenomePair
+            yield return new GenomePair
             {
                 LeftGenome = whiteSolver,
                 RightGenome = blackSolver
-            });
+            };
         }
-
-        return pairs;
     }
 
     private void SimulateAllPairs(IEnumerable<Competitor> leftCompetitors, IEnumerable<Competitor> rightCompetitors)
@@ -163,7 +161,6 @@ public class Simulation
                 Console.Write("\rPlayed {0} matches out of {1}.", _currentReadyCount, _currentMatchCount);
             }
         });
-        Console.WriteLine();
     }
 
     private void SimulatePair(in CompetingPair pair)
@@ -218,7 +215,11 @@ public class Simulation
         while ((endState = board.GetGameEndState()) == GameEndState.None)
         {
             var player = board.CurrentTurn == PieceColor.White ? whiteAi : blackAi;
-            board.MakeMove(player.GetNextMove().Move);
+            var move = player.GetNextMove().Move;
+            board.MakeMove(move);
+
+            whiteAi.SelectMove(move);
+            blackAi.SelectMove(move);
         }
 
         return (endState, board.TurnCount);
@@ -226,6 +227,8 @@ public class Simulation
 
     public Genome[] FindBestGenomes(Generation generation, int amount)
     {
+        _currentReadyCount = 0;
+
         Genome[] PlayEliminationMatches(IReadOnlyCollection<Genome> genomes)
         {
             var (left, right) = PrepareCompetitors(genomes);
@@ -258,6 +261,8 @@ public class Simulation
             Shuffle(participants);
             participants = participants.Take(nearestPowerOfTwo).ToArray();
         }
+
+        _currentMatchCount = participants.Length - 1;
 
         while (participants.Length / 2 >= amount)
         {

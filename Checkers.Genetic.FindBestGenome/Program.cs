@@ -11,7 +11,7 @@ const string output = "ai_config.json";
 
 using (var stream = File.OpenWrite(output))
 {
-    var writer = new Utf8JsonWriter(stream);
+    using var writer = new Utf8JsonWriter(stream);
     JsonSerializer.Serialize(writer, analyzerConfig);
 }
 

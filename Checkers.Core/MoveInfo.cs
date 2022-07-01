@@ -1,8 +1,8 @@
 ﻿namespace Checkers.Core;
 
-public class MoveFullInfo
+public class MoveInfo
 {
-    public MoveFullInfo(Move move, IReadOnlyList<Position> capturedPositions, Position? promotionPosition)
+    public MoveInfo(Move move, IReadOnlyList<Position> capturedPositions, Position? promotionPosition)
     {
         Move = move;
         CapturedPositions = capturedPositions;
@@ -20,4 +20,14 @@ public class MoveFullInfo
     public Position StartPosition => Move.PieceOnBoard.Position;
     public Position EndPosition => Move.Path.Last();
     public bool IsCapturing => CapturedPositions.Count > 0;
+
+    public Piece GetMovedPieceAtIndex(int pathIndex)
+    {
+        if (HasPromoted && pathIndex >= PromotionPathIndex)
+        {
+            return new Piece(PieceType.Queen, Piece.Color);
+        }
+
+        return Piece;
+    }
 }

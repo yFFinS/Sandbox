@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers.Genetic.AiVsAi", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers.Genetic.FindBestGenome", "Checkers.Genetic.FindBestGenome\Checkers.Genetic.FindBestGenome.csproj", "{1815DF07-CC4B-4D1F-AE8D-DD30A69BEFE2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sandbox.Shared", "Sandbox.Shared\Sandbox.Shared.csproj", "{F900C50E-1869-4E24-9BE9-007C700A5EA3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,5 +50,9 @@ Global
 		{1815DF07-CC4B-4D1F-AE8D-DD30A69BEFE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1815DF07-CC4B-4D1F-AE8D-DD30A69BEFE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1815DF07-CC4B-4D1F-AE8D-DD30A69BEFE2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F900C50E-1869-4E24-9BE9-007C700A5EA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F900C50E-1869-4E24-9BE9-007C700A5EA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F900C50E-1869-4E24-9BE9-007C700A5EA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F900C50E-1869-4E24-9BE9-007C700A5EA3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

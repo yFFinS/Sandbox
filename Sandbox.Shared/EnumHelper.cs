@@ -1,4 +1,4 @@
-﻿namespace Checkers.View;
+﻿namespace Sandbox.Shared;
 
 public static class EnumHelper
 {

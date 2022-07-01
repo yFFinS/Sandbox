@@ -16,6 +16,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Checkers.Core\Checkers.Core.csproj" />
+      <ProjectReference Include="..\Sandbox.Shared\Sandbox.Shared.csproj" />
     </ItemGroup>
 
 </Project>

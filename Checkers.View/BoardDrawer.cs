@@ -1,16 +1,13 @@
 ﻿using Checkers.Core;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Sandbox.Shared;
 
 
 namespace Checkers.View;
 
 public class BoardDrawer
 {
-    private static readonly Color WhiteCellColor = new(191, 176, 143);
-    private static readonly Color BlackCellColor = new(36, 15, 14);
-    private static readonly Color WhitePieceColor = new(191, 130, 38);
-    private static readonly Color BlackPieceColor = new(99, 65, 40);
     private static readonly Color QueenInnerColor = new(138, 0, 14);
     private static readonly Color CapturedPreviewColor = new(0.2f, 0.2f, 0.2f, 0.25f);
 
@@ -23,14 +20,13 @@ public class BoardDrawer
     private readonly Texture2D _moveTexture;
     private readonly Texture2D _queenInnerTexture;
 
-    private int _cellSize;
-    private Board? _board;
-    private IReadOnlyList<MoveDisplayInfo>? _displayInfos;
-    private int _partialPathIndex;
+    private readonly BoardDrawable _boardDrawable;
 
-    public BoardDrawer(GraphicsDevice device)
+
+    public BoardDrawer(GraphicsDevice device, BoardDrawable boardDrawable)
     {
         _device = device;
+        _boardDrawable = boardDrawable;
 
         _uiFont = Fonts.DefaultUiFont;
         _spriteBatch = new SpriteBatch(_device);
@@ -41,26 +37,16 @@ public class BoardDrawer
         _queenInnerTexture = TextureFactory.CreateFilledCircleTexture(_device, Color.White, 72, 256);
     }
 
-    public void SetTargetBoard(Board board)
-    {
-        _board = board;
-    }
-
     public void Draw(GameTime gameTime)
     {
-        if (_board is null)
-        {
-            return;
-        }
-
         _spriteBatch.Begin();
 
         DrawCells();
         DrawCellIndices();
-        DrawPieces();
         DrawMoves();
+        DrawPieces();
 
-        var gameEndState = _board.GetGameEndState();
+        var gameEndState = _boardDrawable.GetGameEndState();
         DrawGameEndStateText(gameEndState);
 
         _spriteBatch.End();
@@ -92,190 +78,92 @@ public class BoardDrawer
 
     private void DrawMoves()
     {
-        if (_displayInfos is null)
-        {
-            return;
-        }
-
         var visited = new HashSet<Position>();
-        foreach (var displayInfo in _displayInfos)
+        foreach (var moveDrawable in _boardDrawable.Moves.OrderByDescending(drawable => drawable.DrawOrder))
         {
-            foreach (var position in displayInfo.FullInfo.Move.Path.Skip(_partialPathIndex)
+            foreach (var position in moveDrawable.MoveInfo.Move.Path.Skip(moveDrawable.StaringIndex + 1)
                          .Where(pos => !visited.Contains(pos)))
             {
                 visited.Add(position);
-                _spriteBatch.Draw(_moveTexture, GetCellRect(position), displayInfo.PathColor);
+                var rect = _boardDrawable.GetCellRectangle(position);
+                _spriteBatch.Draw(_moveTexture, rect, moveDrawable.PathColor);
             }
         }
     }
 
     private void DrawPieces()
     {
-        Position? TryGetPartialMovePiecePosition(IEnumerable<PieceOnBoard> pieceOnBoards)
+        foreach (var pieceDrawable in _boardDrawable.Pieces.OrderBy(p => p.DrawOrder))
         {
-            Position? result = null;
-            if (_displayInfos is null || _displayInfos.Count == 0)
+            var rect = _boardDrawable.GetCellRectangle(pieceDrawable.Position);
+
+            var piece = pieceDrawable.Piece;
+            var color = piece.Color == PieceColor.White ? PieceDrawable.WhitePieceColor : PieceDrawable.BlackPieceColor;
+            _spriteBatch.Draw(_pieceTexture, rect, color);
+
+            if (piece.Type == PieceType.Queen)
             {
-                return result;
+                _spriteBatch.Draw(_queenInnerTexture, rect, QueenInnerColor);
             }
 
-            foreach (var pieceOnBoard in pieceOnBoards.Where(pieceOnBoard =>
-                         _displayInfos[0].FullInfo.StartPosition == pieceOnBoard.Position))
+            if (pieceDrawable.PreviewCapture)
             {
-                result = pieceOnBoard.Position;
-                break;
-            }
-
-            return result;
-        }
-
-        var pieces = _board!.GetAllPieces().ToList();
-        var capturedPositions = _displayInfos is null
-            ? new HashSet<Position>()
-            : _displayInfos.SelectMany(info => info.FullInfo.CapturedPositions).ToHashSet();
-
-        Position? overridePosition = null;
-        if (_partialPathIndex > 0)
-        {
-            overridePosition = TryGetPartialMovePiecePosition(pieces);
-            var wasCaptured = capturedPositions.Take(_partialPathIndex).ToArray();
-            pieces = pieces.Where(p =>
-                    !wasCaptured.Contains(p.Position))
-                .ToList();
-        }
-
-        Position? currentPartialMovePosition = overridePosition.HasValue
-            ? _displayInfos![0].FullInfo.Move.Path[_partialPathIndex - 1]
-            : null;
-        var willBeCaptured = capturedPositions.Skip(_partialPathIndex).ToArray();
-
-        foreach (var pieceOnBoard in pieces)
-        {
-            var position = pieceOnBoard.Position;
-            var shouldOverrideDrawAsQueen = false;
-            if (overridePosition.HasValue && position == overridePosition.Value)
-            {
-                shouldOverrideDrawAsQueen = _displayInfos is not null && _displayInfos.Count > 0 &&
-                                            position == _displayInfos![0].FullInfo.StartPosition &&
-                                            _partialPathIndex > _displayInfos[0].FullInfo.PromotionPathIndex;
-                position = currentPartialMovePosition!.Value;
-            }
-
-            var pieceRect = GetCellRect(position);
-
-            var color = pieceOnBoard.Piece.Color == PieceColor.Black ? BlackPieceColor : WhitePieceColor;
-            _spriteBatch.Draw(_pieceTexture, pieceRect, color);
-            if (pieceOnBoard.Piece.Type == PieceType.Queen || shouldOverrideDrawAsQueen)
-            {
-                _spriteBatch.Draw(_queenInnerTexture, pieceRect, QueenInnerColor);
-            }
-
-            if (willBeCaptured.Contains(pieceOnBoard.Position))
-            {
-                _spriteBatch.Draw(_cellTexture, pieceRect, CapturedPreviewColor);
+                _spriteBatch.Draw(_cellTexture, rect, CapturedPreviewColor);
             }
         }
-    }
-
-    private Rectangle GetCellRect(Position position)
-    {
-        return new Rectangle(position.X * _cellSize, position.Y * _cellSize,
-            _cellSize, _cellSize);
     }
 
     private void DrawCells()
     {
-        var screenRect = new Rectangle(0, 0, _device.Viewport.Width, _device.Viewport.Height);
-        _spriteBatch.Draw(_cellTexture, screenRect, WhiteCellColor);
-
-        foreach (var (x, y) in GetAllCellPositions(_board!, _cellSize))
+        foreach (var cellDrawable in _boardDrawable.Cells)
         {
-            var cell = new Position(x / _cellSize, y / _cellSize);
-
-            if (!_overridenCellColors.TryGetValue(cell, out var color))
-            {
-                if (!IsBlackCell(cell.X, cell.Y))
-                {
-                    continue;
-                }
-
-                color = BlackCellColor;
-            }
-
-            _spriteBatch.Draw(_cellTexture, GetCellRect(cell), color);
+            _spriteBatch.Draw(_cellTexture, _boardDrawable.GetCellRectangle(cellDrawable.Position), cellDrawable.Color);
         }
     }
 
     private void DrawCellIndices()
     {
-        var scale = _cellSize / 256f;
-        foreach (var (x, y) in GetAllCellPositions(_board!, _cellSize))
+        var cellSize = _boardDrawable.CellSize;
+        var scale = cellSize / 256f;
+        foreach (var cellDrawable in _boardDrawable.Cells)
         {
             const float padding = 2f;
-            var (xi, yi) = (x / _cellSize, y / _cellSize);
+            var (xi, yi) = (cellDrawable.BoardPosition.X, cellDrawable.BoardPosition.Y);
+
             var color = IsBlackCell(xi, yi) ? Color.White : Color.Black;
-            _spriteBatch.DrawString(_uiFont, $"{xi}-{yi}", new Vector2(x + padding, y + padding),
+            _spriteBatch.DrawString(_uiFont, $"{xi}-{yi}", cellDrawable.Position + new Vector2(padding),
                 color, 0, Vector2.Zero,
                 Vector2.One * scale, SpriteEffects.None, 0);
         }
-    }
-
-    private Move? _animatingMove;
-    
-    public void PlayMoveAnimation(Move move)
-    {
-        _animatingMove = move;
     }
 
     private static bool IsBlackCell(int xi, int yi)
     {
         return (xi + yi) % 2 == 1;
     }
+}
 
-    private static IEnumerable<(int, int)> GetAllCellPositions(Board board, int cellSize)
+internal static class EnumerableExtensions
+{
+    public static int IndexOf<TItem>(this IReadOnlyList<TItem> source, TItem item, int start = 0)
+        where TItem : struct, IEquatable<TItem>
     {
-        for (var x = 0; x < board.Size; x++)
+        for (var i = start; i < source.Count; i++)
         {
-            for (var y = 0; y < board.Size; y++)
+            if (item.Equals(source[i]))
             {
-                yield return (x * cellSize, y * cellSize);
+                return i;
             }
         }
+
+        return -1;
     }
+}
 
-    public void SetCellSize(int cellSize)
+public static class GameTimeExtensions
+{
+    public static float DeltaTime(this GameTime gameTime)
     {
-        _cellSize = cellSize;
-    }
-
-    public void SetDisplayedMoves(IEnumerable<MoveDisplayInfo>? moves)
-    {
-        _displayInfos = moves?.OrderByDescending(info => info.DrawLayer).ToArray();
-    }
-
-    public void SetPartialPathIndex(int partialPathIndex)
-    {
-        _partialPathIndex = partialPathIndex + 1;
-    }
-
-    public void SetCellColor(Position cell, Color? color)
-    {
-        if (color is null)
-        {
-            _overridenCellColors.Remove(cell);
-        }
-        else
-        {
-            _overridenCellColors[cell] = color.Value;
-        }
-    }
-
-    private readonly Dictionary<Position, Color> _overridenCellColors = new();
-
-    public Position GetCellAt(Point screenPosition)
-    {
-        var x = screenPosition.X / _cellSize;
-        var y = screenPosition.Y / _cellSize;
-        return new Position(x, y);
+        return (float)gameTime.ElapsedGameTime.TotalMilliseconds / 1000f;
     }
 }

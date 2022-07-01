@@ -439,11 +439,11 @@ public class MoveGenerator
         return captured.Piece.Color != piece.Piece.Color;
     }
 
-    public MoveFullInfo GetMoveFullInfo(in Move move)
+    public MoveInfo GetMoveInfo(in Move move)
     {
         var capturedPositions = GetAllMoveCaptures(move).ToArray();
         var promotionPosition = TryGetQueenPromotionPosition(move.Path, move.PieceOnBoard.Piece.Color);
-        return new MoveFullInfo(move, capturedPositions, promotionPosition);
+        return new MoveInfo(move, capturedPositions, promotionPosition);
     }
 
     private readonly PieceOnBoard[] _pieceBuffer;

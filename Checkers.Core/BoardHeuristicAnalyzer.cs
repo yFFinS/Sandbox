@@ -10,6 +10,8 @@ public class BoardHeuristicAnalyzer
     private PieceColor _fromPerspective;
     private HeuristicAnalyzerConfig _config;
 
+    private readonly PieceOnBoard[] _pieceBuffer = new PieceOnBoard[24];
+
     public BoardHeuristicAnalyzer()
     {
         _config = new HeuristicAnalyzerConfig();
@@ -36,22 +38,22 @@ public class BoardHeuristicAnalyzer
         _fromPerspective = fromPerspective;
 
         var boardSize = board.Size;
-        var pieceOnBoards = board.GetAllPieces().ToArray();
+        var count = board.GetAllPiecesNonAlloc(_pieceBuffer);
 
         var score = 0;
 
-        score += EvaluateAlivePieces(pieceOnBoards);
-        score += EvaluateSafePieces(boardSize, pieceOnBoards);
-        score += EvaluateMovablePieces(board, pieceOnBoards);
+        score += EvaluateAlivePieces(_pieceBuffer.Take(count));
+        score += EvaluateSafePieces(boardSize, _pieceBuffer.Take(count));
+        score += EvaluateMovablePieces(board, _pieceBuffer.Take(count));
         score += EvaluateFreePromotionCells(board);
-        score += EvaluateDistanceFromPromotionLines(boardSize, pieceOnBoards);
-        score += EvaluateDifferenceInPieceCount(pieceOnBoards);
-        score += EvaluateDefenderPieces(boardSize, pieceOnBoards);
-        score += EvaluateAttackerPawns(boardSize, pieceOnBoards);
-        score += EvaluateCentralPawns(boardSize, pieceOnBoards);
-        score += EvaluateMainDiagonalPieces(boardSize, pieceOnBoards);
-        score += EvaluateDoubleDiagonalPieces(pieceOnBoards);
-        score += EvaluateLonerPieces(board, pieceOnBoards);
+        score += EvaluateDistanceFromPromotionLines(boardSize, _pieceBuffer.Take(count));
+        score += EvaluateDifferenceInPieceCount(_pieceBuffer.Take(count));
+        score += EvaluateDefenderPieces(boardSize, _pieceBuffer.Take(count));
+        score += EvaluateAttackerPawns(boardSize, _pieceBuffer.Take(count));
+        score += EvaluateCentralPawns(boardSize, _pieceBuffer.Take(count));
+        score += EvaluateMainDiagonalPieces(boardSize, _pieceBuffer.Take(count));
+        score += EvaluateDoubleDiagonalPieces(_pieceBuffer.Take(count));
+        score += EvaluateLonerPieces(board, _pieceBuffer.Take(count));
 
         score += EvaluateHoles(board);
         score += EvaluateTriangles(board);
@@ -69,7 +71,7 @@ public class BoardHeuristicAnalyzer
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-    private int EvaluateStalemate(Board board, int score)
+    private static int EvaluateStalemate(Board board, int score)
     {
         var beforeStalemateTurns = Board.MaxStalemateTurns - board.StalemateTurns;
         var beforeMaxTurnTurns = Board.MaxTurns - board.TurnCount;
@@ -301,7 +303,7 @@ public class BoardHeuristicAnalyzer
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-    private int EvaluateMainDiagonalPieces(int boardSize, PieceOnBoard[] pieceOnBoards)
+    private int EvaluateMainDiagonalPieces(int boardSize, IEnumerable<PieceOnBoard> pieceOnBoards)
     {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)
@@ -321,7 +323,7 @@ public class BoardHeuristicAnalyzer
         return Math.Abs(position.X - position.Y) == 1;
     }
 
-    private int EvaluateDoubleDiagonalPieces(PieceOnBoard[] pieceOnBoards)
+    private int EvaluateDoubleDiagonalPieces(IEnumerable<PieceOnBoard> pieceOnBoards)
     {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)
@@ -344,7 +346,7 @@ public class BoardHeuristicAnalyzer
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-    private int EvaluateCentralPawns(int boardSize, PieceOnBoard[] pieceOnBoards)
+    private int EvaluateCentralPawns(int boardSize, IEnumerable<PieceOnBoard> pieceOnBoards)
     {
         var centerMin = boardSize / 2 - 2;
         var centerMax = boardSize / 2 + 1;
@@ -369,7 +371,7 @@ public class BoardHeuristicAnalyzer
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-    private int EvaluateAttackerPawns(int boardSize, PieceOnBoard[] pieceOnBoards)
+    private int EvaluateAttackerPawns(int boardSize, IEnumerable<PieceOnBoard> pieceOnBoards)
     {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)
@@ -459,7 +461,7 @@ public class BoardHeuristicAnalyzer
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-    private int EvaluateLonerPieces(Board board, PieceOnBoard[] pieceOnBoards)
+    private int EvaluateLonerPieces(Board board, IEnumerable<PieceOnBoard> pieceOnBoards)
     {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)
@@ -494,7 +496,7 @@ public class BoardHeuristicAnalyzer
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-    private int EvaluateDefenderPieces(int boardSize, PieceOnBoard[] pieceOnBoards)
+    private int EvaluateDefenderPieces(int boardSize, IEnumerable<PieceOnBoard> pieceOnBoards)
     {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)
@@ -510,7 +512,7 @@ public class BoardHeuristicAnalyzer
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-    private int EvaluateDifferenceInPieceCount(PieceOnBoard[] pieceOnBoards)
+    private int EvaluateDifferenceInPieceCount(IEnumerable<PieceOnBoard> pieceOnBoards)
     {
         var whitePieces = 0;
         var blackPieces = 0;
@@ -536,7 +538,7 @@ public class BoardHeuristicAnalyzer
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-    private int EvaluateDistanceFromPromotionLines(int boardSize, PieceOnBoard[] pieceOnBoards)
+    private int EvaluateDistanceFromPromotionLines(int boardSize, IEnumerable<PieceOnBoard> pieceOnBoards)
     {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)
@@ -582,7 +584,7 @@ public class BoardHeuristicAnalyzer
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-    private int EvaluateMovablePieces(Board board, PieceOnBoard[] pieceOnBoards)
+    private int EvaluateMovablePieces(Board board, IEnumerable<PieceOnBoard> pieceOnBoards)
     {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)
@@ -603,7 +605,7 @@ public class BoardHeuristicAnalyzer
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-    private int EvaluateSafePieces(int boardSize, PieceOnBoard[] pieceOnBoards)
+    private int EvaluateSafePieces(int boardSize, IEnumerable<PieceOnBoard> pieceOnBoards)
     {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)
@@ -618,7 +620,7 @@ public class BoardHeuristicAnalyzer
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-    private int EvaluateAlivePieces(PieceOnBoard[] pieceOnBoards)
+    private int EvaluateAlivePieces(IEnumerable<PieceOnBoard> pieceOnBoards)
     {
         var score = 0;
         foreach (var pieceOnBoard in pieceOnBoards)

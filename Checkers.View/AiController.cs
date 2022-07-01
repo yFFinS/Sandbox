@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 using Checkers.Core;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Input;
 
 namespace Checkers.View;
 
@@ -11,20 +10,13 @@ public class AiController : AbstractBoardController
 
     private CheckersAi _ai = null!;
     private bool _gameEnded;
-    private MoveSequenceStatus _moveSequenceStatus;
-
-    private enum MoveSequenceStatus
-    {
-        Idle = 0,
-        WaitingForTurn,
-        Playing,
-        Ready
-    }
 
     private Task<EvaluatedMove>? _nextMoveTask;
 
     public readonly BoardHeuristicAnalyzer Analyzer;
     public readonly BoardSolver Solver;
+
+    private MoveAnimator _moveAnimator = null!;
 
     public AiController()
     {
@@ -36,45 +28,34 @@ public class AiController : AbstractBoardController
     {
         _ai = new CheckersAi(Board, Solver);
         _ai.EnableLogging(Console.Out);
+        _ai.Solver.EnableLogging(Console.Out);
+
+        _moveAnimator = new MoveAnimator(Drawable);
     }
 
-    public override void OnTurnEnded()
-    {
-        IntermediateDisplay.ResetDisplayedMoves();
-    }
-
-    public override void OnTurnBegan()
+    public override void OnTurnBegan(MoveInfo opponentMoveInfo)
     {
         _gameEnded = Board.IsGameEnded();
-        if (_moveSequenceStatus == MoveSequenceStatus.WaitingForTurn)
-        {
-            _moveSequenceStatus = MoveSequenceStatus.Playing;
-            var evaluatedMove = _ai.GetNextMove(true);
-            PlayFullMoveSequence(evaluatedMove);
-        }
+        _ai.SelectMove(opponentMoveInfo.Move);
     }
 
-    private void PlayFullMoveSequence(EvaluatedMove evaluatedMove)
+    protected override void OnGameStarted()
     {
-        const float delay = 2000;
-        Task.Run(async delegate
-        {
-            var moves = evaluatedMove.FullMoveSequence!;
-            foreach (var move in moves.Take(moves.Count % 2 == 1 ? moves.Count : moves.Count - 1))
-            {
-                await Task.Delay(TimeSpan.FromMilliseconds(delay));
-                Board.MakeMove(move);
-                IntermediateDisplay.SetMovePathCells(move);
-            }
-
-            _moveSequenceStatus = MoveSequenceStatus.Ready;
-        });
+        _ai.OnGameStarted();
     }
 
     public override void Update(GameTime gameTime, ControllerVisitor visitor)
     {
-        if (_moveSequenceStatus == MoveSequenceStatus.Playing)
+        _moveAnimator.Update(gameTime);
+
+        if (_moveAnimator.Animating)
         {
+            return;
+        }
+
+        if (_moveAnimator.WaitingForEndingConfirm)
+        {
+            MakeMove(visitor);
             return;
         }
 
@@ -86,17 +67,9 @@ public class AiController : AbstractBoardController
             }
 
             var move = _nextMoveTask.Result;
-            _nextMoveTask = null;
-            Board.MakeMove(move.Move);
-            IntermediateDisplay.SetMovePathCells(move.Move);
-            visitor.PassTurn();
-            
-            return;
-        }
 
-        if (Input.IsKeyDown(Keys.P) && _moveSequenceStatus == MoveSequenceStatus.Idle)
-        {
-            _moveSequenceStatus = MoveSequenceStatus.WaitingForTurn;
+            _moveAnimator.AnimateMove(Board.MoveGenerator.GetMoveInfo(move.Move));
+            return;
         }
 
         if (!IsMyTurn || _gameEnded)
@@ -104,14 +77,7 @@ public class AiController : AbstractBoardController
             return;
         }
 
-        if (_moveSequenceStatus == MoveSequenceStatus.Ready)
-        {
-            _moveSequenceStatus = MoveSequenceStatus.Idle;
-            visitor.PassTurn();
-            return;
-        }
-
-        _nextMoveTask = Task.Run(async delegate
+        _nextMoveTask = Task.Run(async () =>
         {
             var startTime = Stopwatch.StartNew();
             var result = await _ai.GetNextMoveAsync();
@@ -124,5 +90,17 @@ public class AiController : AbstractBoardController
 
             return result;
         });
+    }
+
+    private void MakeMove(ControllerVisitor visitor)
+    {
+        _moveAnimator.ConfirmEnding();
+
+        var move = _nextMoveTask!.Result;
+        _nextMoveTask = null;
+
+        _ai.SelectMove(move.Move);
+        visitor.MakeMove(move.Move);
+        visitor.PassTurn();
     }
 }

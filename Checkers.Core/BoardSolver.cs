@@ -43,49 +43,23 @@ public class BoardSolver
         }
     }
 
-    private BoardMovesTreeNode BuildMoveTree(Board board, int maxDepth, bool useMultithreading = false)
+    private void EvaluateTree(BoardMovesTreeNode root, int maxDepth)
     {
-        var root = new BoardMovesTreeNode
-        {
-            Board = board
-        };
-
-        ReevaluateTree(root, maxDepth, useMultithreading);
-        return root;
+        LazyAlphaBeta(root, maxDepth, int.MinValue, int.MaxValue, true);
     }
 
-    private void ReevaluateTree(BoardMovesTreeNode root, int maxDepth, bool useMultithreading = false)
+    private int _currentTreeDepth;
+
+    private void ExpandNode(BoardMovesTreeNode node)
     {
-        if (!useMultithreading)
-        {
-            LazyAlphaBeta(root, maxDepth, int.MinValue, int.MaxValue, true);
-            return;
-        }
-
-        if (!root.IsExpanded)
-        {
-            ExpandChildren(root);
-        }
-
-        Parallel.ForEach(root.Children, child =>
-            LazyAlphaBeta(child, maxDepth - 1, int.MinValue, int.MaxValue, false));
-
-        root.Score = root.Children.Max(child => child.Score);
-    }
-
-    private static void ResetTreeScores(BoardMovesTreeNode node)
-    {
-        node.Score = 0;
-        foreach (var child in node.Children)
-        {
-            ResetTreeScores(child);
-        }
-    }
-
-    private static void ExpandChildren(BoardMovesTreeNode node)
-    {
+        node.Children.Clear();
         foreach (var (newBoard, move) in GenerateNextMoves(node.Board!))
         {
+            if (IsTimeExpired)
+            {
+                return;
+            }
+
             node.Children.Add(
                 new BoardMovesTreeNode
                 {
@@ -111,61 +85,106 @@ public class BoardSolver
         }
     }
 
+    private BoardMovesTreeNode? _tree;
+
+    public void SelectBranch(Move move)
+    {
+        _tree = _tree?.Children.FirstOrDefault(child =>
+        {
+            var childMove = child.LeadingMove!.Value;
+            return childMove.PieceOnBoard.Position == move.PieceOnBoard.Position &&
+                   childMove.Path.SequenceEqual(move.Path);
+        });
+
+        if (_tree is not null)
+        {
+            _currentTreeDepth--;
+        }
+        else
+        {
+            _currentTreeDepth = 0;
+        }
+    }
+
+    public void ResetTree()
+    {
+        _currentTreeDepth = 0;
+        _tree = null;
+    }
+
     public EvaluatedMove[] EvaluateMoves(Board board, bool extractFullMoveSequence = false)
     {
+        _stopwatch = null;
+        _isTimeExpired = false;
         _fromPerspective = board.CurrentTurn;
         _extractingFullPath = extractFullMoveSequence;
 
-        BoardMovesTreeNode? root = null;
+        _tree ??= new BoardMovesTreeNode
+        {
+            Board = board
+        };
 
         if (_config.MaxEvaluationTime < 0)
         {
-            root = BuildMoveTree(board, _config.MaxSearchDepth, _config.UsingMultithreading);
-            var result = ToEvaluatedMoves(root);
-            FreeUsedBoards(root);
+            var stopwatch = Stopwatch.StartNew();
+            
+            EvaluateTree(_tree, _config.MaxSearchDepth);
+            _currentTreeDepth = Math.Max(_currentTreeDepth, _config.MaxSearchDepth);
+            var result = ToEvaluatedMoves(_tree);
+
+            _logger?.WriteLine("Passed time: {0:F2}s. Evaluated depth: {1}.", stopwatch.Elapsed.TotalSeconds, _config.MaxSearchDepth);
             return result;
         }
 
-        var startTime = Stopwatch.StartNew();
         var maxSearchDepth = _config.MaxSearchDepth == SolverConfig.UnlimitedSearchDepth
             ? int.MaxValue - 1
             : _config.MaxSearchDepth;
 
-        var lastPassedTime = 0.0f;
+        var lastPassedTime = 0.0;
 
-        foreach (var depth in Enumerable.Range(1, maxSearchDepth))
+        _stopwatch = Stopwatch.StartNew();
+
+        for (var depth = _currentTreeDepth + 1; depth <= maxSearchDepth; depth++)
         {
-            if (root is null)
-            {
-                root = BuildMoveTree(board, depth, _config.UsingMultithreading);
-            }
-            else
-            {
-                ResetTreeScores(root);
-                ReevaluateTree(root, depth, _config.UsingMultithreading);
-            }
+            EvaluateTree(_tree, depth);
+            _currentTreeDepth = depth;
 
-            var lastEvaluated = ToEvaluatedMoves(root);
-            var passedTime = startTime.ElapsedMilliseconds / 1000f;
+            var passedTime = _stopwatch.Elapsed.TotalSeconds;
 
             _logger?.WriteLine("Passed time: {0:F2}s. Evaluated depth: {1}.", passedTime, depth);
 
-            if (root.Children.Count == 1 && !_extractingFullPath)
+            if (_tree.Children.Count == 1 && !_extractingFullPath)
             {
-                FreeUsedBoards(root);
-                return lastEvaluated;
+                return ToEvaluatedMoves(_tree);
             }
 
-            if (2 * passedTime - lastPassedTime >= _config.MaxEvaluationTime || depth == maxSearchDepth)
+            if (2 * passedTime - lastPassedTime >= _config.MaxEvaluationTime || depth == maxSearchDepth ||
+                IsTimeExpired)
             {
-                FreeUsedBoards(root);
-                return lastEvaluated;
+                return ToEvaluatedMoves(_tree);
             }
 
             lastPassedTime = passedTime;
         }
 
         throw new Exception();
+    }
+
+    private Stopwatch? _stopwatch;
+
+    private bool _isTimeExpired;
+
+    private bool IsTimeExpired
+    {
+        get
+        {
+            if (_isTimeExpired)
+            {
+                return true;
+            }
+
+            return _isTimeExpired = _stopwatch?.Elapsed.TotalSeconds >= _config.MaxEvaluationTime;
+        }
     }
 
     public static float GetWinPercentFromScore(int score)
@@ -198,11 +217,22 @@ public class BoardSolver
 
     private EvaluatedMove[] ToEvaluatedMoves(BoardMovesTreeNode root)
     {
-        var evaluatedMoves = root.Children.Select(child =>
-        {
-            List<Move>? fullMoveSequence = null;
-            if (_extractingFullPath)
+        return root.Children
+            .Select(child =>
             {
+                List<Move>? fullMoveSequence = null;
+                var evaluatedMove = new EvaluatedMove
+                {
+                    Move = child.LeadingMove!.Value,
+                    Score = child.Score,
+                    FullMoveSequence = fullMoveSequence
+                };
+
+                if (!_extractingFullPath)
+                {
+                    return evaluatedMove;
+                }
+
                 fullMoveSequence = new List<Move>();
                 var lastNode = FindClosestBestNode(root);
 
@@ -213,21 +243,19 @@ public class BoardSolver
                 }
 
                 fullMoveSequence.Reverse();
-            }
 
-            return new EvaluatedMove
-            {
-                Move = child.LeadingMove!.Value,
-                Score = child.Score,
-                FullMoveSequence = fullMoveSequence
-            };
-        });
-
-        return evaluatedMoves.ToArray();
+                return evaluatedMove;
+            })
+            .ToArray();
     }
 
     private int LazyAlphaBeta(BoardMovesTreeNode node, int depth, int alpha, int beta, bool isMaximizing)
     {
+        if (IsTimeExpired)
+        {
+            return node.Score;
+        }
+
         var gameEndState = node.Board!.GetGameEndState();
         if (gameEndState != GameEndState.None)
         {
@@ -239,7 +267,12 @@ public class BoardSolver
 
         if (!shouldEndExpansion && depth > 0 && !node.IsExpanded)
         {
-            ExpandChildren(node);
+            ExpandNode(node);
+        }
+
+        if (IsTimeExpired)
+        {
+            return node.Score;
         }
 
         if (shouldEndExpansion || depth == 0 || node.Children.Count == 0)
@@ -253,6 +286,11 @@ public class BoardSolver
             value = int.MinValue;
             foreach (var child in node.Children)
             {
+                if (IsTimeExpired)
+                {
+                    return node.Score;
+                }
+
                 value = Math.Max(value, LazyAlphaBeta(child, depth - 1, alpha, beta, false));
                 if (value >= beta)
                 {
@@ -267,6 +305,11 @@ public class BoardSolver
             value = int.MaxValue;
             foreach (var child in node.Children)
             {
+                if (IsTimeExpired)
+                {
+                    return node.Score;
+                }
+
                 value = Math.Min(value, LazyAlphaBeta(child, depth - 1, alpha, beta, true));
                 if (value <= alpha)
                 {

@@ -22,6 +22,11 @@ public class CheckersAi
         _logger = null;
     }
 
+    public void SelectMove(Move move)
+    {
+        Solver.SelectBranch(move);
+    }
+
     public EvaluatedMove GetNextMove(bool extractFullMoveSequence = false)
     {
         var moves = RateMoves(extractFullMoveSequence);
@@ -50,5 +55,10 @@ public class CheckersAi
     public async Task<EvaluatedMove> GetNextMoveAsync(bool extractFullMoveSequence = false)
     {
         return await Task.Run(() => GetNextMove(extractFullMoveSequence));
+    }
+
+    public void OnGameStarted()
+    {
+        Solver.ResetTree();
     }
 }

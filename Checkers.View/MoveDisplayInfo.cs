@@ -5,8 +5,8 @@ namespace Checkers.View;
 
 public struct MoveDisplayInfo
 {
-    public MoveFullInfo FullInfo { get; set; }
-    public Color PathColor { get; set; }
+    public MoveInfo Info { get; init; }
+    public Color PathColor { get; init; }
     public Color PieceColor { get; set; }
-    public int DrawLayer { get; set; }
+    public int DrawLayer { get; init; }
 }
