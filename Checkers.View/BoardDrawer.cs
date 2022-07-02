@@ -72,8 +72,8 @@ public class BoardDrawer
         var textSize = _uiFont.MeasureString(text);
         var position = screenCenter - textSize / 2f;
         _spriteBatch.Draw(_cellTexture, position,
-            new Rectangle(0, 0, (int)textSize.X, (int)textSize.Y), Color.DimGray);
-        _spriteBatch.DrawString(_uiFont, text, position, Color.Orange);
+            new Rectangle(0, 0, (int)textSize.X, (int)textSize.Y), Color.Black);
+        _spriteBatch.DrawString(_uiFont, text, position, Color.WhiteSmoke);
     }
 
     private void DrawMoves()

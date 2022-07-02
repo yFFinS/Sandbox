@@ -24,19 +24,6 @@ ai.Solver.Configure(config =>
     config.MaxEvaluationTime = 1f;
 });
 
-game.Board.SetState(new BoardState
-{
-    Pieces = new[]
-    {
-        new PieceOnBoard(new Position(3, 2), Piece.BlackPawn),
-        new PieceOnBoard(new Position(1, 2), Piece.BlackPawn),
-        new PieceOnBoard(new Position(1, 4), Piece.BlackPawn),
-        new PieceOnBoard(new Position(3, 4), Piece.BlackPawn),
-        new PieceOnBoard(new Position(5, 4), Piece.BlackPawn),
-        new PieceOnBoard(new Position(5, 2), Piece.BlackPawn),
-        new PieceOnBoard(new Position(6, 5), Piece.WhitePawn),
-    }
-});
 game.SetWhitePlayer(player);
 game.SetBlackPlayer(ai);
 

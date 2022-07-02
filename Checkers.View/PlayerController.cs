@@ -257,8 +257,16 @@ public class PlayerController : AbstractBoardController
                     return;
                 }
 
-                ContinuePartialMove(collisions, move);
-                DisplayPartialMove();
+                if (move.Move.Path.IndexOf(position, _partialPathIndex + 1) == _partialPathIndex + 1)
+                {
+                    ContinuePartialMove(collisions, move);
+                    DisplayPartialMove();
+                }
+                else
+                {
+                    UpdateAvailableMoves(position);
+                }
+
                 break;
             default:
                 /*
@@ -409,6 +417,8 @@ public class PlayerController : AbstractBoardController
         Drawable.CellsController.MarkCell(cell, marker);
 
         _partialMoves = null;
+        _partialPathIndex = -1;
+        
         UpdateDisplayedMoves();
     }
 }
