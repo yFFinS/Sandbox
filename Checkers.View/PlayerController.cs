@@ -22,10 +22,39 @@ public class PlayerController : AbstractBoardController
     private MoveInfo[]? _partialMoves;
     private MoveAnimator _moveAnimator = null!;
     private int _partialPathIndex = -1;
+    private Position? _lastSelectedPiecePosition;
 
     public override void OnTurnBegan(MoveInfo? opponentMoveInfo)
     {
         _gameEnded = Board.IsGameEnded();
+        UpdateMustCaptureCellsIfAny();
+        
+        if (_lastSelectedPiecePosition.HasValue)
+        {
+            UpdateAvailableMoves(_lastSelectedPiecePosition.Value);
+            _lastSelectedPiecePosition = null;
+        }
+    }
+
+    private void UpdateMustCaptureCellsIfAny()
+    {
+        var hasCaptures = false;
+        foreach (var move in Board.MoveGenerator.GenerateAllMoves())
+        {
+            if (!hasCaptures)
+            {
+                var isCapturing = Board.MoveGenerator.GetAllMoveCaptures(move).Any();
+                if (!isCapturing)
+                {
+                    break;
+                }
+
+                hasCaptures = true;
+            }
+
+            var startCell = Drawable.GetCellAt(move.StartPosition)!;
+            Drawable.CellsController.MarkCell(startCell, CellMarker.MustCapture);
+        }
     }
 
     public override void OnTurnEnded()
@@ -66,6 +95,13 @@ public class PlayerController : AbstractBoardController
             return;
         }
 
+        if (Input.IsButtonDown(0))
+        {
+            var cellPosition = Drawable.ToBoardPosition(Input.MousePosition);
+            HandleCellClick(cellPosition, visitor);
+            return;
+        }
+
         if (!IsMyTurn)
         {
             return;
@@ -84,11 +120,6 @@ public class PlayerController : AbstractBoardController
         else if (Input.IsKeyDown(Keys.Escape))
         {
             RestartGame(visitor);
-        }
-        else if (Input.IsButtonDown(0))
-        {
-            var cellPosition = Drawable.ToBoardPosition(Input.MousePosition);
-            HandleCellClick(cellPosition, visitor);
         }
         else if (Input.IsButtonDown(1))
         {
@@ -198,6 +229,8 @@ public class PlayerController : AbstractBoardController
     private void MakeMove(MoveInfo moveInfo, ControllerVisitor visitor)
     {
         ResetMoves();
+
+        Drawable.CellsController.ResetUpdatedMustCaptureCells();
         _gameHistory.Push(Board.GetState());
 
         UpdateDrawableCellsFromMove(moveInfo);
@@ -391,6 +424,7 @@ public class PlayerController : AbstractBoardController
         _partialPathIndex = -1;
         _isMidPartialMove = false;
 
+        Drawable.CellsController.ResetUpdatedMoveIndicatorCells();
         Drawable.ClearMoves();
     }
 
@@ -405,20 +439,32 @@ public class PlayerController : AbstractBoardController
             return;
         }
 
-        _currentMoves = Board.MoveGenerator.GenerateMovesForPiece(new PieceOnBoard(position, piece))
-            .Select(move => Board.MoveGenerator.GetMoveInfo(move))
-            .ToArray();
+        var moveAvailable = false;
+
+        if (IsMyTurn)
+        {
+            _currentMoves = Board.MoveGenerator.GenerateMovesForPiece(new PieceOnBoard(position, piece))
+                .Select(move => Board.MoveGenerator.GetMoveInfo(move))
+                .ToArray();
+            moveAvailable = _currentMoves.Length > 0;
+        }
+        else
+        {
+            _lastSelectedPiecePosition = position;
+        }
 
         var cell = Drawable.GetCellAt(position)!;
-
-        var marker = _currentMoves.Length > 0 ? CellMarker.MoveAvailable : CellMarker.NoMoveAvailable;
+        var marker = moveAvailable ? CellMarker.MoveAvailable : CellMarker.NoMoveAvailable;
 
         Drawable.CellsController.ResetUpdatedMoveIndicatorCells();
         Drawable.CellsController.MarkCell(cell, marker);
 
         _partialMoves = null;
         _partialPathIndex = -1;
-        
-        UpdateDisplayedMoves();
+
+        if (IsMyTurn)
+        {
+            UpdateDisplayedMoves();
+        }
     }
 }

@@ -8,7 +8,8 @@ public enum CellMarker
     MoveAvailable,
     NoMoveAvailable,
     MoveStart,
-    MovePath
+    MovePath,
+    MustCapture
 }
 
 public class CellDrawable
@@ -17,9 +18,10 @@ public class CellDrawable
     public static readonly Color BlackCellColor = new(84, 34, 9);
 
     private static readonly Color MoveAvailableColor = new(62, 122, 65);
-    private static readonly Color NoMoveAvailableColor = new(115, 53, 44);
+    private static readonly Color NoMoveAvailableColor = new(145, 44, 44);
     private static readonly Color MovePathColor = new(78, 91, 130);
     private static readonly Color MoveStartColor = new(44, 62, 115);
+    private static readonly Color MustCaptureColor = new(189, 58, 58);
 
     public Position BoardPosition { get; init; }
     public Vector2 Position { get; init; }
@@ -46,6 +48,9 @@ public class CellDrawable
                 break;
             case CellMarker.MovePath:
                 Color = MovePathColor;
+                break;
+            case CellMarker.MustCapture:
+                Color = MustCaptureColor;
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(marker), marker, null);

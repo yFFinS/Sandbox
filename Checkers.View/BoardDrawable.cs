@@ -153,7 +153,7 @@ public class BoardDrawable
 
 public class MoveDrawable
 {
-    public static readonly Color DefaultPathColor = Color.Green;
+    public static readonly Color DefaultPathColor = new (58, 158, 65);
 
     public MoveDrawable(MoveInfo moveInfo)
     {
