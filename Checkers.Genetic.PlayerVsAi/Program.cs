@@ -15,16 +15,19 @@ using (var stream = File.OpenRead(configPath))
 var game = new CheckersGameMain(args);
 
 var player = new PlayerController();
-var ai = new AiController();
-
-ai.Analyzer.Configure(analyzerConfig);
-ai.Solver.Configure(config =>
 {
-    config.MaxSearchDepth = 15;
-    config.MaxEvaluationTime = 1f;
-});
+    var ai = new AiController();
 
-game.SetWhitePlayer(ai);
-game.SetBlackPlayer(player);
+    ai.Analyzer.Configure(analyzerConfig);
+    ai.Solver.Configure(config =>
+    {
+        config.MaxSearchDepth = 15;
+        config.MaxEvaluationTime = 1f;
+    });
+
+    game.SetBlackPlayer(ai);
+}
+
+game.SetWhitePlayer(player);
 
 game.Run();

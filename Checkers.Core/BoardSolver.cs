@@ -158,12 +158,6 @@ public class BoardSolver
             var passedTime = _stopwatch.Elapsed.TotalSeconds;
             _logger?.WriteLine("Passed time: {0:F2}s. Evaluated depth: {1}.", passedTime, depth);
 
-
-            if (_tree.Children.Count == 1 && !_extractingFullPath)
-            {
-                return ToEvaluatedMoves(_tree);
-            }
-
             if (2 * passedTime - lastPassedTime >= _config.MaxEvaluationTime || depth == maxSearchDepth)
             {
                 return ToEvaluatedMoves(_tree);

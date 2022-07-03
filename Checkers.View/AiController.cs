@@ -3,12 +3,14 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using Checkers.Core;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
+using Sandbox.Shared;
 
 namespace Checkers.View;
 
 public class AiController : AbstractBoardController
 {
-    private const long MinMoveTime = 1000;
+    private const long MinMoveTime = 0;
 
     private CheckersAi _ai = null!;
     private bool _gameEnded;
@@ -48,6 +50,18 @@ public class AiController : AbstractBoardController
 
     public override void Update(GameTime gameTime, ControllerVisitor visitor)
     {
+        if (_gameEnded && Input.IsKeyDown(Keys.Escape))
+        {
+            Board.Reset();
+            _gameEnded = false;
+            Drawable.CellsController.ResetUpdatedMoveIndicatorCells();
+            Drawable.CellsController.ResetUpdatedPathCells();
+            Drawable.InitializeFromBoard(Board);
+
+            visitor.RestartGame();
+            return;
+        }
+
         _moveAnimator.Update(gameTime);
 
         if (_moveAnimator.Animating)

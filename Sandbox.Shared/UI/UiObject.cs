@@ -4,6 +4,8 @@ using Microsoft.Xna.Framework.Graphics;
 namespace Sandbox.Shared.UI;
 
 
+
+
 public abstract class UiObject
 {
     public UiObject? Parent { get; internal set; }
@@ -11,74 +13,6 @@ public abstract class UiObject
 
     public Rectangle Bounds { get; private set; }
     protected GraphicsDevice GraphicsDevice { get; private set; } = null!;
-
-    private Texture2D? _backgroundTexture;
-    private Color _backgroundColor = Color.White;
-
-    protected SpriteBatch SpriteBatch { get; private set; } = null!;
-
-    protected virtual void BeginBackgroundChange(Texture2D? newTexture, Color newColor)
-    {
-    }
-
-    protected virtual void EndBackgroundChange()
-    {
-    }
-
-    protected internal virtual bool OnMouseEnter()
-    {
-        return false;
-    }
-
-    protected internal virtual bool OnMouseExit()
-    {
-        return false;
-    }
-
-    protected internal virtual bool OnMouseMove(Point position)
-    {
-        return false;
-    }
-
-    protected internal virtual bool OnMouseDown(Point position, MouseButton button)
-    {
-        return false;
-    }
-
-    protected internal virtual bool OnMouseUp(Point position, MouseButton button)
-    {
-        return false;
-    }
-
-    public Texture2D? BackgroundTexture
-    {
-        get
-        {
-            if (_backgroundTexture is null)
-            {
-                return BackgroundTexture = TextureFactory.CreateFilledRectTexture(GraphicsDevice, Color.White);
-            }
-
-            return _backgroundTexture;
-        }
-        set
-        {
-            BeginBackgroundChange(value, BackgroundColor);
-            _backgroundTexture = value;
-            EndBackgroundChange();
-        }
-    }
-
-    public Color BackgroundColor
-    {
-        get => _backgroundColor;
-        set
-        {
-            BeginBackgroundChange(BackgroundTexture, value);
-            _backgroundColor = value;
-            EndBackgroundChange();
-        }
-    }
 
     public int Width
     {
@@ -156,15 +90,6 @@ public abstract class UiObject
     {
     }
 
-    protected virtual void DrawBackground()
-    {
-        if (_backgroundTexture is null)
-        {
-            return;
-        }
-
-    }
-
     public virtual void Draw()
     {
     }
@@ -172,8 +97,37 @@ public abstract class UiObject
     protected virtual void InitializeGraphicsDevice(GraphicsDevice device)
     {
         GraphicsDevice = device;
-        SpriteBatch = new SpriteBatch(GraphicsDevice);
     }
+}
+
+public interface IUiRaycastTarget
+{
+    bool Contains(Point position);
+}
+
+public interface IMouseEnterListener
+{
+    void OnMouseEnter();
+}
+
+public interface IMouseExitListener
+{
+    void OnMouseExit();
+}
+
+public interface IMouseUpListener
+{
+    void OnMouseUp(Point position, MouseButton button);
+}
+
+public interface IMouseDownListener
+{
+    void OnMouseDown(Point position, MouseButton button);
+}
+
+public interface IMouseMoveListener
+{
+    void OnMouseMove(Point position);
 }
 
 public class Label : UiObject
@@ -270,3 +224,5 @@ public class Label : UiObject
 
     }
 }
+
+public 

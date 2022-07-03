@@ -14,7 +14,7 @@ internal class MoveAnimator
     private float _waitTime;
     private float _animationFrameTime;
     private int _currentPathIndex = -1;
-    private float _waitTimePerStep = 0.3f;
+    private float _waitTimePerStep = 0.15f;
     private float _animationSpeed = 4f;
 
     public float WaitTimePerStep
