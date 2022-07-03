@@ -67,5 +67,7 @@ public class UpdatedCellsController
             ? _updatedMoveIndicatorCells
             : _updatedPathCells;
         destination[cellDrawable] = marker;
+
+        _updatedCaptureCells.Remove(cellDrawable);
     }
 }

@@ -28,7 +28,7 @@ public class PlayerController : AbstractBoardController
     {
         _gameEnded = Board.IsGameEnded();
         UpdateMustCaptureCellsIfAny();
-        
+
         if (_lastSelectedPiecePosition.HasValue)
         {
             UpdateAvailableMoves(_lastSelectedPiecePosition.Value);
@@ -89,13 +89,13 @@ public class PlayerController : AbstractBoardController
             return;
         }
 
-        if (Input.IsButtonDown(0) && _gameEnded)
+        if (Input.IsButtonDown(MouseButton.Left) && _gameEnded)
         {
             RestartGame(visitor);
             return;
         }
 
-        if (Input.IsButtonDown(0))
+        if (Input.IsButtonDown(MouseButton.Left) && _playerMode == PlayerMode.Playing)
         {
             var cellPosition = Drawable.ToBoardPosition(Input.MousePosition);
             HandleCellClick(cellPosition, visitor);
@@ -121,7 +121,7 @@ public class PlayerController : AbstractBoardController
         {
             RestartGame(visitor);
         }
-        else if (Input.IsButtonDown(1))
+        else if (Input.IsButtonDown(MouseButton.Right))
         {
             ResetMoves();
         }
@@ -134,8 +134,8 @@ public class PlayerController : AbstractBoardController
 
     private void HandleEditing()
     {
-        var leftClick = Input.IsButtonDown(0);
-        var rightClick = Input.IsButtonDown(1);
+        var leftClick = Input.IsButtonDown(MouseButton.Left);
+        var rightClick = Input.IsButtonDown(MouseButton.Right);
 
         if (!leftClick && !rightClick)
         {
@@ -173,6 +173,7 @@ public class PlayerController : AbstractBoardController
         _isWaitingForAnimatorToFinish = false;
         _isMidPartialMove = false;
 
+        Drawable.CellsController.ResetUpdatedMustCaptureCells();
         visitor.MakeMove(finalMove.Move);
         visitor.PassTurn();
     }
@@ -226,7 +227,7 @@ public class PlayerController : AbstractBoardController
         }
     }
 
-    private void MakeMove(MoveInfo moveInfo, ControllerVisitor visitor)
+    private void MakeMoveWithoutAnimations(MoveInfo moveInfo, ControllerVisitor visitor)
     {
         ResetMoves();
 
@@ -341,7 +342,7 @@ public class PlayerController : AbstractBoardController
         }
         else
         {
-            MakeMove(moveInfo, visitor);
+            MakeMoveWithoutAnimations(moveInfo, visitor);
         }
     }
 
@@ -382,6 +383,7 @@ public class PlayerController : AbstractBoardController
     {
         if (!Board.IsInBounds(position))
         {
+            _lastSelectedPiecePosition = null;
             return;
         }
 
@@ -435,6 +437,7 @@ public class PlayerController : AbstractBoardController
         var piece = Board.GetPieceAt(position);
         if (piece.IsEmpty)
         {
+            _lastSelectedPiecePosition = null;
             ResetMoves();
             return;
         }

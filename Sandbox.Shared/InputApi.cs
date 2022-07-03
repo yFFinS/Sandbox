@@ -3,6 +3,11 @@ using Microsoft.Xna.Framework.Input;
 
 namespace Sandbox.Shared;
 
+public enum MouseButton
+{
+    Left = 0, Right = 1, Middle = 2
+}
+
 public class InputApi
 {
     public enum FrameKeyState

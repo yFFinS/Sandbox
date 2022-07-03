@@ -3,10 +3,82 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace Sandbox.Shared.UI;
 
+
 public abstract class UiObject
 {
+    public UiObject? Parent { get; internal set; }
+    internal readonly List<UiObject> Children = new();
+
     public Rectangle Bounds { get; private set; }
     protected GraphicsDevice GraphicsDevice { get; private set; } = null!;
+
+    private Texture2D? _backgroundTexture;
+    private Color _backgroundColor = Color.White;
+
+    protected SpriteBatch SpriteBatch { get; private set; } = null!;
+
+    protected virtual void BeginBackgroundChange(Texture2D? newTexture, Color newColor)
+    {
+    }
+
+    protected virtual void EndBackgroundChange()
+    {
+    }
+
+    protected internal virtual bool OnMouseEnter()
+    {
+        return false;
+    }
+
+    protected internal virtual bool OnMouseExit()
+    {
+        return false;
+    }
+
+    protected internal virtual bool OnMouseMove(Point position)
+    {
+        return false;
+    }
+
+    protected internal virtual bool OnMouseDown(Point position, MouseButton button)
+    {
+        return false;
+    }
+
+    protected internal virtual bool OnMouseUp(Point position, MouseButton button)
+    {
+        return false;
+    }
+
+    public Texture2D? BackgroundTexture
+    {
+        get
+        {
+            if (_backgroundTexture is null)
+            {
+                return BackgroundTexture = TextureFactory.CreateFilledRectTexture(GraphicsDevice, Color.White);
+            }
+
+            return _backgroundTexture;
+        }
+        set
+        {
+            BeginBackgroundChange(value, BackgroundColor);
+            _backgroundTexture = value;
+            EndBackgroundChange();
+        }
+    }
+
+    public Color BackgroundColor
+    {
+        get => _backgroundColor;
+        set
+        {
+            BeginBackgroundChange(BackgroundTexture, value);
+            _backgroundColor = value;
+            EndBackgroundChange();
+        }
+    }
 
     public int Width
     {
@@ -84,6 +156,15 @@ public abstract class UiObject
     {
     }
 
+    protected virtual void DrawBackground()
+    {
+        if (_backgroundTexture is null)
+        {
+            return;
+        }
+
+    }
+
     public virtual void Draw()
     {
     }
@@ -91,6 +172,7 @@ public abstract class UiObject
     protected virtual void InitializeGraphicsDevice(GraphicsDevice device)
     {
         GraphicsDevice = device;
+        SpriteBatch = new SpriteBatch(GraphicsDevice);
     }
 }
 
@@ -126,16 +208,54 @@ public class Label : UiObject
     private SpriteBatch _spriteBatch = null!;
     private SpriteFont? _font;
 
+    public Vector2 TextSize { get; private set; }
+
     public SpriteFont Font
     {
-        get => _font ??= Fonts.DefaultUiFont;
-        set => _font = value;
+        get
+        {
+            if (_font is null)
+            {
+                return Font = Fonts.DefaultUiFont;
+            }
+
+            return _font;
+        }
+        set
+        {
+            BeginFontChange(value);
+            _font = value;
+            EndFontChange();
+        }
     }
 
     public string Text
     {
         get => _text;
-        set => _text = value;
+        set
+        {
+            BeginTextChange(value);
+            _text = value;
+            EndTextChange();
+        }
+    }
+
+    protected virtual void BeginFontChange(SpriteFont newFont)
+    {
+        TextSize = newFont.MeasureString(Text);
+    }
+
+    protected virtual void EndFontChange()
+    {
+    }
+
+    protected virtual void BeginTextChange(string newText)
+    {
+        TextSize = Font.MeasureString(newText);
+    }
+
+    protected virtual void EndTextChange()
+    {
     }
 
     protected override void InitializeGraphicsDevice(GraphicsDevice device)
@@ -147,5 +267,6 @@ public class Label : UiObject
 
     public override void Draw()
     {
+
     }
 }

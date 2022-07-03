@@ -124,7 +124,7 @@ public class MoveGenerator
                 yield break;
             }
 
-            var collidingGroups = GroupMovesByPositionCollision(moves, pathLength);
+            var collidingGroups = GroupMovesByPositionCollision(filteredMoves, pathLength);
             foreach (var collidingMoves in collidingGroups.Values)
             {
                 foreach (var correctMove in FindCorrectMoves(collidingMoves, pathLength + 1))

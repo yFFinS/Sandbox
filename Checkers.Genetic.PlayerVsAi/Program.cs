@@ -24,7 +24,7 @@ ai.Solver.Configure(config =>
     config.MaxEvaluationTime = 1f;
 });
 
-game.SetWhitePlayer(player);
-game.SetBlackPlayer(ai);
+game.SetWhitePlayer(ai);
+game.SetBlackPlayer(player);
 
 game.Run();
