@@ -8,9 +8,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers.Genetic", "Checker
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers.Genetic.Simulation", "Checkers.Genetic.Simulation\Checkers.Genetic.Simulation.csproj", "{24A4FD22-6C4A-40E8-9C46-3C9F44E5E1EF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers.Genetic.PlayerVsAi", "Checkers.Genetic.PlayerVsAi\Checkers.Genetic.PlayerVsAi.csproj", "{F259BE93-DDF4-4326-B105-4327C69B435A}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers.Genetic.AiVsAi", "Checkers.Genetic.AiVsAi\Checkers.Genetic.AiVsAi.csproj", "{2C8EF4E7-70A2-4C7B-9AD9-C55BBBA2C544}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers", "Checkers\Checkers.csproj", "{F259BE93-DDF4-4326-B105-4327C69B435A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Checkers.Genetic.FindBestGenome", "Checkers.Genetic.FindBestGenome\Checkers.Genetic.FindBestGenome.csproj", "{1815DF07-CC4B-4D1F-AE8D-DD30A69BEFE2}"
 EndProject
@@ -42,10 +40,6 @@ Global
 		{F259BE93-DDF4-4326-B105-4327C69B435A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F259BE93-DDF4-4326-B105-4327C69B435A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F259BE93-DDF4-4326-B105-4327C69B435A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{2C8EF4E7-70A2-4C7B-9AD9-C55BBBA2C544}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2C8EF4E7-70A2-4C7B-9AD9-C55BBBA2C544}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2C8EF4E7-70A2-4C7B-9AD9-C55BBBA2C544}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2C8EF4E7-70A2-4C7B-9AD9-C55BBBA2C544}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1815DF07-CC4B-4D1F-AE8D-DD30A69BEFE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1815DF07-CC4B-4D1F-AE8D-DD30A69BEFE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1815DF07-CC4B-4D1F-AE8D-DD30A69BEFE2}.Release|Any CPU.ActiveCfg = Release|Any CPU

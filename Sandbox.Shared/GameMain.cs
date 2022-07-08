@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using Sandbox.Shared.UI.Base;
 
 namespace Sandbox.Shared;
 
@@ -17,6 +18,7 @@ internal class DefaultApiManager : ApiManager
     private const string UiFontName = "UIFont";
 
     private InputApi _inputApi = null!;
+    private UiManager _uiManager = null!;
 
     public override void LoadAll(ContentManager contentManager)
     {
@@ -28,11 +30,14 @@ internal class DefaultApiManager : ApiManager
 
         Fonts.SetApi(fontApi);
         Input.SetApi(_inputApi = new InputApi());
+
+        _uiManager = new UiManager();
     }
 
     public override void Update(GameTime gameTime)
     {
         _inputApi.Update(gameTime);
+        _uiManager.Update(gameTime);
     }
 }
 

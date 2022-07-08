@@ -1,6 +1,4 @@
-﻿using System;
-using System.Diagnostics;
-using System.Threading.Tasks;
+﻿using System.Diagnostics;
 using Checkers.Core;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
@@ -41,15 +39,22 @@ public class AiController : AbstractBoardController
     {
         _gameEnded = Board.IsGameEnded();
         _ai.SelectMove(opponentMoveInfo.Move);
+        _waitingForOpponentsTurn = false;
     }
 
-    protected override void OnGameStarted()
+    protected override void OnGameStarted(PlayerType opponentType)
     {
         _ai.OnGameStarted();
+        _waitingForOpponentsTurn = false;
     }
 
     public override void Update(GameTime gameTime, ControllerVisitor visitor)
     {
+        if (_waitingForOpponentsTurn)
+        {
+            return;
+        }
+
         if (_gameEnded && Input.IsKeyDown(Keys.Escape))
         {
             Board.Reset();
@@ -118,5 +123,9 @@ public class AiController : AbstractBoardController
         _ai.SelectMove(move.Move);
         visitor.MakeMove(move.Move);
         visitor.PassTurn();
+
+        _waitingForOpponentsTurn = true;
     }
+
+    private bool _waitingForOpponentsTurn = false;
 }

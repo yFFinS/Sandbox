@@ -6,11 +6,19 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>Checkers.Genetic.Player</RootNamespace>
+        <LangVersion>default</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\Checkers.Genetic\Checkers.Genetic.csproj" />
       <ProjectReference Include="..\Checkers.View\Checkers.View.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="ai_config.json" />
+      <AdditionalFiles Include="ai_config.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </AdditionalFiles>
     </ItemGroup>
 
 </Project>

@@ -1,5 +1,7 @@
-﻿using Checkers.Core;
+﻿using System.Collections;
+using Checkers.Core;
 using Microsoft.Xna.Framework;
+using Sandbox.Shared.UI;
 
 namespace Checkers.View;
 
@@ -9,6 +11,7 @@ public class BoardDrawable
     private readonly List<PieceDrawable> _pieces = new();
     private readonly List<CellDrawable> _cells = new();
     private readonly List<MoveDrawable> _moves = new();
+    private readonly List<UiText> _cellIndices = new();
 
     public readonly UpdatedCellsController CellsController = new();
 
@@ -47,6 +50,13 @@ public class BoardDrawable
 
     public void InitializeFromBoard(Board board)
     {
+        foreach (var cellIndex in _cellIndices)
+        {
+            cellIndex.Dispose();
+        }
+
+        _cellIndices.Clear();
+
         _cells.Clear();
         _pieces.Clear();
 
@@ -64,6 +74,20 @@ public class BoardDrawable
                     BoardPosition = position,
                     Position = ToScreenPosition(position)
                 });
+                
+                if (isBlack)
+                {
+                    _cellIndices.Add(new UiText
+                    {
+                        Bounds = GetCellRectangle(position),
+                        Text = Board.GetCellName(position).ToUpper(),
+                        FontScale = 0.35f,
+                        TextColor = Color.White,
+                        HorizontalTextAlignment = HorizontalAlignment.Right,
+                        VerticalTextAlignment = VerticalAlignment.Top,
+                        Padding = 2
+                    });
+                }
             }
         }
 
@@ -121,6 +145,7 @@ public class BoardDrawable
     public IEnumerable<CellDrawable> Cells => _cells;
     public IEnumerable<PieceDrawable> Pieces => _pieces;
 
+    public IEnumerable<UiText> CellIndices => _cellIndices;
     public int CellSize => _cellSize;
     public Rectangle ScreenRectangle => _boardScreenRectangle;
 
@@ -147,32 +172,6 @@ public class BoardDrawable
         if (piece is not null)
         {
             _pieces.Remove(piece);
-        }
-    }
-}
-
-public class MoveDrawable
-{
-    public static readonly Color DefaultPathColor = new (58, 158, 65);
-
-    public MoveDrawable(MoveInfo moveInfo)
-    {
-        MoveInfo = moveInfo;
-    }
-
-    public readonly MoveInfo MoveInfo;
-    public Color PathColor { get; set; } = DefaultPathColor;
-    public int DrawOrder { get; set; }
-    public int StaringIndex { get; set; } = -1;
-}
-
-public static class CellEnumerableExtensions
-{
-    public static void ResetAllColors(this IEnumerable<CellDrawable> cells)
-    {
-        foreach (var cellDrawable in cells)
-        {
-            cellDrawable.ResetColor();
         }
     }
 }

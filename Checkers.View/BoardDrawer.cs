@@ -42,7 +42,7 @@ public class BoardDrawer
         _spriteBatch.Begin();
 
         DrawCells();
-        DrawCellIndices();
+        DrawCellIndices(gameTime);
         DrawMoves();
         DrawPieces();
 
@@ -121,25 +121,12 @@ public class BoardDrawer
         }
     }
 
-    private void DrawCellIndices()
+    private void DrawCellIndices(GameTime gameTime)
     {
-        var cellSize = _boardDrawable.CellSize;
-        var scale = cellSize / 256f;
-        foreach (var cellDrawable in _boardDrawable.Cells)
+        foreach (var cellIndex in _boardDrawable.CellIndices)
         {
-            const float padding = 2f;
-            var (xi, yi) = (cellDrawable.BoardPosition.X, cellDrawable.BoardPosition.Y);
-
-            var color = IsBlackCell(xi, yi) ? Color.White : Color.Black;
-            _spriteBatch.DrawString(_uiFont, $"{xi}-{yi}", cellDrawable.Position + new Vector2(padding),
-                color, 0, Vector2.Zero,
-                Vector2.One * scale, SpriteEffects.None, 0);
+            cellIndex.Draw(gameTime, _spriteBatch);
         }
-    }
-
-    private static bool IsBlackCell(int xi, int yi)
-    {
-        return (xi + yi) % 2 == 1;
     }
 }
 

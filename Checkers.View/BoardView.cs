@@ -8,7 +8,7 @@ public class ControllerVisitor
 {
     public bool TurnPassPending { get; private set; }
     public bool GameRestartPending { get; private set; }
-
+    public bool PauseMenuPending { get; private set; }
     public Move? PendingMove { get; private set; }
 
     public void PassTurn()
@@ -25,11 +25,15 @@ public class ControllerVisitor
     {
         PendingMove = move;
     }
+
+    public void OpenPauseMenu()
+    {
+        PauseMenuPending = true;
+    }
 }
 
 public class BoardView
 {
-    private readonly GraphicsDevice _device;
     private readonly BoardDrawer _boardDrawer;
     private readonly Board _board;
 
@@ -52,24 +56,11 @@ public class BoardView
         _blackPlayer.Initialize(_board, _boardDrawable);
     }
 
-    public void Start()
-    {
-        if (_isStarted)
-        {
-            return;
-        }
-
-        _isStarted = true;
-        _lastTurn = _board.CurrentTurn;
-        StartGame();
-    }
-
     public BoardView(GraphicsDevice device, Board board)
     {
-        _device = device;
         _board = board;
 
-        _boardDrawable = new BoardDrawable(board, _device.Viewport.Bounds);
+        _boardDrawable = new BoardDrawable(board, device.Viewport.Bounds);
         _boardDrawer = new BoardDrawer(device, _boardDrawable);
     }
 
@@ -109,7 +100,7 @@ public class BoardView
 
     public void Update(GameTime gameTime)
     {
-        if (!_isStarted)
+        if (!_isStarted || GameState.CurrentGameState != GameStateType.Board)
         {
             return;
         }
@@ -133,17 +124,36 @@ public class BoardView
 
         if (visitor.GameRestartPending)
         {
-            _lastTurn = PieceColor.White;
             StartGame();
+            return;
+        }
+
+        if (visitor.PauseMenuPending)
+        {
+            GameState.SwitchState(GameStateType.Pause);
         }
     }
 
-    private void StartGame()
+    public void StartGame()
     {
-        _whitePlayer!.StartGame(true);
-        _blackPlayer!.StartGame(false);
+        _isStarted = true;
+        
+        _board.Reset();
+        _boardDrawable.InitializeFromBoard(_board);
+        _boardDrawable.ClearMoves();
+        _lastTurn = _board.CurrentTurn;
+
+        _whitePlayer!.StartGame(true, _blackPlayer is AiController ? PlayerType.Ai : PlayerType.Local);
+        _blackPlayer!.StartGame(false, _whitePlayer is AiController ? PlayerType.Ai : PlayerType.Local);
     }
 
+    public void EndGame()
+    {
+        _isStarted = false;
+        _whitePlayer = null;
+        _blackPlayer = null;
+    }
+    
     public void Draw(GameTime gameTime)
     {
         _boardDrawer.Draw(gameTime);

@@ -250,7 +250,7 @@ public class BoardSolver
 
     private int LazyAlphaBeta(BoardMovesTreeNode node, int depth, int alpha, int beta, bool isMaximizing)
     {
-        if (IsTimeExpired)
+        if (IsTimeExpired && !node.IsRoot)
         {
             return node.Score;
         }

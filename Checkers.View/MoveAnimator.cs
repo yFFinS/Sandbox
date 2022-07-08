@@ -54,7 +54,7 @@ internal class MoveAnimator
         _animatorState = AnimatorState.Idle;
         _removedPieces.Clear();
 
-        _animatingPiece!.DrawOrder = 0;
+        _animatingPiece.DrawOrder = 0;
         _animatingMove = null;
         _animatingPiece = null;
         _currentPathIndex = -1;
@@ -94,6 +94,11 @@ internal class MoveAnimator
         _animatingPiece!.Position = _boardDrawable.ToScreenPosition(_animatingMove.StartPosition);
         _boardDrawable.CellsController.ResetUpdatedPathCells();
 
+        if (_animatingMove.HasPromoted)
+        {
+            _animatingPiece.Demote();
+        }
+        
         _animatingPiece = null;
         _animatingMove = null;
         _currentPathIndex = -1;
@@ -118,7 +123,14 @@ internal class MoveAnimator
         _isAnimatingBackwards = false;
         _boardDrawable.CellsController.ResetUpdatedPathCells();
 
-        _animatingPiece = _boardDrawable.GetPieceAt(_animatingMove.StartPosition)!;
+        _animatingPiece = _boardDrawable.GetPieceAt(_animatingMove.StartPosition);
+
+        if (_animatingPiece is null)
+        {
+            throw new InvalidOperationException(
+                $"Invalid animation move. Where is no piece at {_animatingMove.StartPosition}.");
+        }
+
         _animatingPiece.DrawOrder = 1;
 
         var startCell = _boardDrawable.GetCellAt(_animatingMove.StartPosition)!;

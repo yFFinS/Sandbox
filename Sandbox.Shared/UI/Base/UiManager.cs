@@ -1,27 +1,36 @@
 ﻿using Microsoft.Xna.Framework;
 
-namespace Sandbox.Shared.UI;
+namespace Sandbox.Shared.UI.Base;
 
-public class UiManager
+internal class UiManager
 {
+    private static UiManager? _instance;
+
+    public static UiManager Instance => _instance!;
+
     private Point _lastMousePosition;
 
-    internal void RegisterUiObject(UiObject uiObject)
+    public UiManager()
+    {
+        if (_instance is not null)
+        {
+            throw new InvalidOperationException();
+        }
+
+        _instance = this;
+    }
+
+    public void RegisterUiObject(UiObject uiObject)
     {
         _uiObjects.Add(uiObject);
     }
 
-    internal void UnregisterUiObject(UiObject uiObject)
+    public void UnregisterUiObject(UiObject uiObject)
     {
         _uiObjects.Remove(uiObject);
     }
 
     private readonly List<UiObject> _uiObjects = new();
-
-    public void Draw(GameTime gameTime)
-    {
-
-    }
 
     public void Update(GameTime gameTime)
     {
@@ -39,7 +48,8 @@ public class UiManager
             .Select(i => (i, inputApi.GetButtonState(i)))
             .ToArray();
 
-        foreach (var uiObject in _uiObjects)
+        var enabledThisFrame = _uiObjects.Where(obj => obj.Enabled).ToArray();
+        foreach (var uiObject in enabledThisFrame)
         {
             if (uiObject is not IUiRaycastTarget target)
             {
@@ -49,27 +59,34 @@ public class UiManager
             var mouseState = GetMouseState(uiObject);
             var contains = target.Contains(mousePosition);
 
-            if (uiObject is IMouseMoveListener moveListener)
+            switch (uiObject)
             {
-                if (mouseMoved)
+                case IMouseMoveListener moveListener:
                 {
-                    moveListener.OnMouseMove(mousePosition);
-                }
-            }
+                    if (mouseMoved)
+                    {
+                        moveListener.OnMouseMove(mousePosition);
+                    }
 
-            if (uiObject is IMouseExitListener exitListener)
-            {
-                if (!contains && mouseState == MouseState.MouseIn)
-                {
-                    exitListener.OnMouseExit();
+                    break;
                 }
-            }
-
-            if (uiObject is IMouseEnterListener enterListener)
-            {
-                if (contains && mouseState == MouseState.MouseOut)
+                case IMouseExitListener exitListener:
                 {
-                    enterListener.OnMouseEnter();
+                    if (!contains && mouseState == MouseState.MouseIn)
+                    {
+                        exitListener.OnMouseExit();
+                    }
+
+                    break;
+                }
+                case IMouseEnterListener enterListener:
+                {
+                    if (contains && mouseState == MouseState.MouseOut)
+                    {
+                        enterListener.OnMouseEnter();
+                    }
+
+                    break;
                 }
             }
 
@@ -91,12 +108,14 @@ public class UiManager
                         {
                             upListener.OnMouseUp(mousePosition, button);
                         }
+
                         break;
                     case InputApi.FrameButtonState.PressedThisFrame:
                         if (uiObject is IMouseDownListener downListener)
                         {
                             downListener.OnMouseDown(mousePosition, button);
                         }
+
                         break;
                 }
             }
@@ -110,11 +129,6 @@ public class UiManager
     }
 
     private readonly Dictionary<UiObject, MouseState> _mouseStates = new();
-
-    private static bool IsInBounds(UiObject uiObject, Point position)
-    {
-        return uiObject.Bounds.Contains(position);
-    }
 
     private MouseState GetMouseState(UiObject uiObject)
     {

@@ -24,13 +24,13 @@ public abstract class AbstractBoardController
     {
     }
 
-    public void StartGame(bool isMyTurn)
+    public void StartGame(bool isMyTurn, PlayerType opponentType)
     {
         IsMyTurn = isMyTurn;
-        OnGameStarted();
+        OnGameStarted(opponentType);
     }
 
-    protected virtual void OnGameStarted()
+    protected virtual void OnGameStarted(PlayerType opponentType)
     {
     }
 

@@ -23,6 +23,7 @@ public class PlayerController : AbstractBoardController
     private MoveAnimator _moveAnimator = null!;
     private int _partialPathIndex = -1;
     private Position? _lastSelectedPiecePosition;
+    private PieceColor _myColor;
 
     public override void OnTurnBegan(MoveInfo? opponentMoveInfo)
     {
@@ -55,6 +56,14 @@ public class PlayerController : AbstractBoardController
             var startCell = Drawable.GetCellAt(move.StartPosition)!;
             Drawable.CellsController.MarkCell(startCell, CellMarker.MustCapture);
         }
+    }
+
+    protected override void OnGameStarted(PlayerType opponentType)
+    {
+        _opponentType = opponentType;
+        _myColor = IsMyTurn ? Board.CurrentTurn :
+            Board.CurrentTurn == PieceColor.Black ? PieceColor.White : PieceColor.Black;
+        ResetMoves();
     }
 
     public override void OnTurnEnded()
@@ -119,7 +128,7 @@ public class PlayerController : AbstractBoardController
         }
         else if (Input.IsKeyDown(Keys.Escape))
         {
-            RestartGame(visitor);
+            visitor.OpenPauseMenu();
         }
         else if (Input.IsButtonDown(MouseButton.Right))
         {
@@ -348,25 +357,7 @@ public class PlayerController : AbstractBoardController
 
     private bool _isWaitingForAnimatorToFinish;
     private bool _isMidPartialMove;
-
-    private static MoveInfo? TryGetPossibleMoveIfCollisionsAreIrrelevant(Position position,
-        IReadOnlyList<MoveInfo> collisions)
-    {
-        var endPositionsAreSame = collisions.Select(col => col.EndPosition).AllEqual();
-        var pathCapturesAreSameInAnyOrder = collisions.Select(col =>
-                col.CapturedPositions.OrderBy(pos => (pos.X, pos.Y)))
-            .AllSequencesEqual();
-
-        if (endPositionsAreSame && pathCapturesAreSameInAnyOrder)
-        {
-            return collisions[0];
-        }
-
-        var moveWithOnlyOneStep =
-            collisions.FirstOrDefault(col => col.EndPosition == position && col.Move.Path.Count == 1);
-
-        return moveWithOnlyOneStep;
-    }
+    private PlayerType _opponentType;
 
     [MemberNotNull(nameof(_partialMoves))]
     private void ContinuePartialMove(IEnumerable<MoveInfo> collisions, MoveInfo selectedMove)
@@ -381,6 +372,11 @@ public class PlayerController : AbstractBoardController
 
     private void HandleCellClick(Position position, ControllerVisitor visitor)
     {
+        if (!IsMyTurn && _opponentType == PlayerType.Local)
+        {
+            return;
+        }
+
         if (!Board.IsInBounds(position))
         {
             _lastSelectedPiecePosition = null;
@@ -443,7 +439,7 @@ public class PlayerController : AbstractBoardController
         }
 
         var moveAvailable = false;
-
+        var selectedMyPiece = piece.Color == _myColor;
         if (IsMyTurn)
         {
             _currentMoves = Board.MoveGenerator.GenerateMovesForPiece(new PieceOnBoard(position, piece))
@@ -451,16 +447,19 @@ public class PlayerController : AbstractBoardController
                 .ToArray();
             moveAvailable = _currentMoves.Length > 0;
         }
-        else
+        else if (_opponentType != PlayerType.Local)
         {
             _lastSelectedPiecePosition = position;
         }
 
-        var cell = Drawable.GetCellAt(position)!;
-        var marker = moveAvailable ? CellMarker.MoveAvailable : CellMarker.NoMoveAvailable;
+        if (selectedMyPiece)
+        {
+            Drawable.CellsController.ResetUpdatedMoveIndicatorCells();
+            var cell = Drawable.GetCellAt(position)!;
+            var marker = moveAvailable ? CellMarker.MoveAvailable : CellMarker.NoMoveAvailable;
 
-        Drawable.CellsController.ResetUpdatedMoveIndicatorCells();
-        Drawable.CellsController.MarkCell(cell, marker);
+            Drawable.CellsController.MarkCell(cell, marker);
+        }
 
         _partialMoves = null;
         _partialPathIndex = -1;

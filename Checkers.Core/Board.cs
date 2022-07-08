@@ -9,16 +9,26 @@ public class Board
         return size % 2 == 0 && size is >= 6 and <= 64;
     }
 
-    public const int MaxTurns = 100;
+    public const int MaxTurns = 200;
     public const int StandardSize = 8;
 
-    public int TurnCount { get; private set; } = 0;
+    public int TurnCount { get; private set; }
 
     public readonly int Size;
     public PieceColor CurrentTurn { get; private set; } = PieceColor.White;
 
     private readonly Piece[,] _board;
     public readonly MoveGenerator MoveGenerator;
+
+    public static string GetCellName(Position position)
+    {
+        if (position.X is < 0 or >= StandardSize)
+        {
+            throw new ArgumentOutOfRangeException(nameof(position));
+        }
+
+        return (char)('a' + position.X) + (StandardSize - position.Y).ToString();
+    }
 
     public Board(int size = StandardSize, bool reset = true)
     {
