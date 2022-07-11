@@ -7,6 +7,8 @@
         <Nullable>enable</Nullable>
         <RootNamespace>Checkers.Genetic.Player</RootNamespace>
         <LangVersion>default</LangVersion>
+        <Configurations>Debug;Release</Configurations>
+        <Platforms>AnyCPU</Platforms>
     </PropertyGroup>
 
     <ItemGroup>
