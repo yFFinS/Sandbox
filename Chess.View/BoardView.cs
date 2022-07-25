@@ -9,7 +9,7 @@ namespace Chess.View;
 public class BoardView
 {
     private readonly BoardDrawer _boardDrawer;
-    private readonly ChessBoard _board;
+    private readonly Board _board;
 
     private AbstractBoardController? _whitePlayer;
     private AbstractBoardController? _blackPlayer;
@@ -30,7 +30,7 @@ public class BoardView
         _blackPlayer.Initialize(_board, _boardDrawable);
     }
 
-    public BoardView(GraphicsDevice device, ContentManager contentManager, ChessBoard board)
+    public BoardView(GraphicsDevice device, ContentManager contentManager, Board board)
     {
         _board = board;
 
@@ -84,13 +84,19 @@ public class BoardView
         _whitePlayer!.Update(gameTime, visitor);
         _blackPlayer!.Update(gameTime, visitor);
 
+        if (visitor.GameRestartPending)
+        {
+            StartGame();
+            return;
+        }
+        
         if (visitor.PendingMove.HasValue)
         {
             _lastMove = visitor.PendingMove;
             _board.MakeMove(_lastMove.Value);
             if (_board.IsCheck())
             {
-                var kingPosition = _board.GetKingPosition(_board.ColorToMove);
+                var kingPosition = _board.GetKingSquare(_board.ColorToMove);
                 _boardDrawable.CheckPosition = kingPosition;
             }
             else
@@ -102,12 +108,6 @@ public class BoardView
         if (visitor.TurnPassPending)
         {
             OnTurnPassed(_lastTurn);
-        }
-
-        if (visitor.GameRestartPending)
-        {
-            StartGame();
-            return;
         }
 
         if (visitor.PauseMenuPending)

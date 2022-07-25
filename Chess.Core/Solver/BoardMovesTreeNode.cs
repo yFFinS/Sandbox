@@ -6,9 +6,7 @@ public class BoardMovesTreeNode
     public BoardMovesTreeNode? Parent { get; init; }
 
     public readonly List<BoardMovesTreeNode> Children = new();
-
-    public ChessBoard? Board { get; init; }
-    public Move? LeadingMove { get; init; }
+    public Move Move { get; init; }
     public bool IsExpanded { get; set; }
-    public double Score { get; set; }
+    public int Score { get; set; }
 }

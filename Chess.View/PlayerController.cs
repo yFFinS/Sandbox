@@ -68,11 +68,6 @@ public class PlayerController : AbstractBoardController
     {
         _moveAnimator.Update(gameTime);
 
-        if (Input.IsKeyDown(Keys.B))
-        {
-            Drawable.InitializeFromBoard(Board);
-        }
-
         if (_isWaitingForAnimatorToFinish)
         {
             if (_moveAnimator.WaitingForEndConfirm)
@@ -80,12 +75,6 @@ public class PlayerController : AbstractBoardController
                 EndAnimationAndMakeMove(_finalMove, visitor);
             }
 
-            return;
-        }
-
-        if (Input.IsKeyDown(Keys.M))
-        {
-            SwitchPlayerMode();
             return;
         }
 
@@ -107,14 +96,10 @@ public class PlayerController : AbstractBoardController
             return;
         }
 
-        if (_playerMode == PlayerMode.Editing)
-        {
-            HandleEditing();
-            return;
-        }
-
         if (Input.IsKeyDown(Keys.Escape))
         {
+            visitor.RestartGame();
+            return;
             visitor.OpenPauseMenu();
         }
         else if (Input.IsButtonDown(MouseButton.Right))

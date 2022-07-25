@@ -13,15 +13,17 @@ public class AiController : AbstractBoardController
 
     private ChessAi _ai = null!;
     private bool _isWaitingForAiMove;
+    private Task? _task;
 
     public override void OnInitialized()
     {
         _moveAnimator = new MoveAnimator(Board, Drawable);
-        var solver = new ChessBoardSolver(new ChessBoardHeuristicAnalyzer());
+        var solver = new BoardSearch(new BoardHeuristicAnalyzer());
         solver.Configure(config =>
         {
-            config.MaxEvaluationTime = 5;
-            config.HardSearchDepthCap = 15;
+            config.MaxEvaluationTime = 5000;
+            config.HardSearchDepthCap = 50;
+            config.SoftSearchDepthCap = 50;
         });
         _ai = new ChessAi(Board, solver);
         solver.EnableLogging(Console.Out);
@@ -43,11 +45,11 @@ public class AiController : AbstractBoardController
 
     public override void Update(GameTime gameTime, ControllerVisitor visitor)
     {
-        if (Board.GetGameEndState() != GameEndState.None)
+        if (Board.IsGameEnded())
         {
             return;
         }
-        
+
         _moveAnimator.Update(gameTime);
 
         if (_isWaitingForAiMove)
@@ -75,10 +77,10 @@ public class AiController : AbstractBoardController
         if (IsMyTurn)
         {
             _isWaitingForAiMove = true;
-            Task.Run(() =>
+            _task = Task.Run(() =>
             {
                 _finalMove = _ai.GetNextMove();
-                return Task.CompletedTask;
+                _task = null;
             });
         }
     }

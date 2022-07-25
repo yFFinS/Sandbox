@@ -6,11 +6,11 @@ namespace Chess.View;
 
 public abstract class AbstractBoardController
 {
-    protected ChessBoard Board { get; private set; } = null!;
+    protected Board Board { get; private set; } = null!;
     protected BoardDrawable Drawable { get; private set; } = null!;
     protected bool IsMyTurn { get; private set; }
 
-    public void Initialize(ChessBoard board, BoardDrawable drawable)
+    public void Initialize(Board board, BoardDrawable drawable)
     {
         Board = board;
         Drawable = drawable;

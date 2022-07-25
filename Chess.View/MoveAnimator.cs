@@ -1,4 +1,5 @@
-﻿using Chess.Core;
+﻿using System.Diagnostics;
+using Chess.Core;
 using Microsoft.Xna.Framework;
 
 namespace Chess.View;
@@ -7,10 +8,10 @@ public class MoveAnimator
 {
     public float Speed { get; set; } = 2f;
 
-    private readonly ChessBoard _board;
+    private readonly Board _board;
     private readonly BoardDrawable _boardDrawable;
 
-    public MoveAnimator(ChessBoard board, BoardDrawable boardDrawable)
+    public MoveAnimator(Board board, BoardDrawable boardDrawable)
     {
         _board = board;
         _boardDrawable = boardDrawable;
@@ -41,25 +42,32 @@ public class MoveAnimator
                 break;
             case MoveType.KingsideCastle:
             case MoveType.QueensideCastle:
-                var color = _board.IsOfColorAt(PieceColor.Black, _move!.Value.Start) ? PieceColor.Black : PieceColor.White;
+                var color = _board.IsOfColorAt(_move!.Value.Start, PieceColor.Black)
+                    ? PieceColor.Black
+                    : PieceColor.White;
                 var rookEndPos = _move!.Value.Type == MoveType.KingsideCastle
                     ? _board.GetKingsideCastleRookEnd(color)
                     : _board.GetQueensideCastleRookEnd(color);
                 _rook!.BoardPosition = rookEndPos;
                 break;
-            case MoveType.KnightPromotion:
+            case MoveType.KnightPromotionQuiet:
+            case MoveType.KnightPromotionCapture:
                 _piece.Promote(PieceType.Knight);
                 break;
-            case MoveType.BishopPromotion:
+            case MoveType.BishopPromotionQuiet:
+            case MoveType.BishopPromotionCapture:
                 _piece.Promote(PieceType.Bishop);
                 break;
-            case MoveType.RookPromotion:
+            case MoveType.RookPromotionQuiet:
+            case MoveType.RookPromotionCapture:
                 _piece.Promote(PieceType.Rook);
                 break;
-            case MoveType.QueenPromotion:
+            case MoveType.QueenPromotionQuiet:
+            case MoveType.QueenPromotionCapture:
                 _piece.Promote(PieceType.Queen);
                 break;
             default:
+                Debug.Assert(false);
                 throw new ArgumentOutOfRangeException();
         }
 
@@ -82,7 +90,7 @@ public class MoveAnimator
             return;
         }
 
-        var color = _board.IsOfColorAt(PieceColor.Black, _move!.Value.Start) ? PieceColor.Black : PieceColor.White;
+        var color = _board.IsOfColorAt(_move!.Value.Start, PieceColor.Black) ? PieceColor.Black : PieceColor.White;
         var rookStartPos = _move!.Value.Type == MoveType.KingsideCastle
             ? _board.GetKingsideCastleRookStart(color)
             : _board.GetQueensideCastleRookStart(color);
@@ -135,7 +143,7 @@ public class MoveAnimator
             return;
         }
 
-        var color = _board.IsOfColorAt(PieceColor.Black, _move!.Value.Start) ? PieceColor.Black : PieceColor.White;
+        var color = _board.IsOfColorAt(_move!.Value.Start, PieceColor.Black) ? PieceColor.Black : PieceColor.White;
         var rookStartPos = _move!.Value.Type == MoveType.KingsideCastle
             ? _board.GetKingsideCastleRookStart(color)
             : _board.GetQueensideCastleRookStart(color);

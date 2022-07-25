@@ -6,7 +6,7 @@ namespace Chess.View;
 
 public class ChessGameMain : GameMain
 {
-    public readonly ChessBoard Board;
+    public readonly Board Board;
     private BoardView _boardView = null!;
 
     protected override void Initialize()
@@ -51,7 +51,7 @@ public class ChessGameMain : GameMain
 
     public ChessGameMain(IReadOnlyList<string> launchArgs) : base(launchArgs)
     {
-        Board = new ChessBoard();
+        Board = new Board();
         IsMouseVisible = true;
         IsFixedTimeStep = true;
     }

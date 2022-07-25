@@ -6,7 +6,7 @@ namespace Chess.View;
 
 public class BoardDrawable
 {
-    public readonly ChessBoard Board;
+    public readonly Board Board;
     private readonly List<PieceDrawable> _pieces = new();
     private readonly List<CellDrawable> _cells = new();
     private readonly List<UiText> _cellIndices = new();
@@ -17,7 +17,7 @@ public class BoardDrawable
 
     private Rectangle _boardScreenRectangle;
 
-    public BoardDrawable(ChessBoard board, Rectangle boardScreenRectangle)
+    public BoardDrawable(Board board, Rectangle boardScreenRectangle)
     {
         Board = board;
         _boardScreenRectangle = boardScreenRectangle;
@@ -33,7 +33,7 @@ public class BoardDrawable
 
     public int ToBoardPosition(Vector2 screenPosition)
     {
-        return ToBoardPosition(new Point((int) screenPosition.X, (int) screenPosition.Y));
+        return ToBoardPosition(new Point((int)screenPosition.X, (int)screenPosition.Y));
     }
 
     public int ToBoardPosition(Point screenPosition)
@@ -48,7 +48,7 @@ public class BoardDrawable
         _moves.Clear();
     }
 
-    public void InitializeFromBoard(ChessBoard board)
+    public void InitializeFromBoard(Board board)
     {
         foreach (var cellIndex in _cellIndices)
         {
@@ -79,7 +79,7 @@ public class BoardDrawable
                 _cellIndices.Add(new UiText
                 {
                     Bounds = GetCellRectangle(position),
-                    Text = ChessBoard.ParseCellName(position).ToUpper(),
+                    Text = Board.GetSquareName(position).ToUpper(),
                     FontScale = 0.35f,
                     TextColor = textColor,
                     HorizontalTextAlignment = HorizontalAlignment.Right,
@@ -140,8 +140,8 @@ public class BoardDrawable
 
     public Rectangle GetCellRectangle(Vector2 screenTopLeft)
     {
-        var x = (int) screenTopLeft.X;
-        var y = (int) screenTopLeft.Y;
+        var x = (int)screenTopLeft.X;
+        var y = (int)screenTopLeft.Y;
         return new Rectangle(x, y, _cellSize, _cellSize);
     }
 

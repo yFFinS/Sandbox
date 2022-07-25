@@ -4,18 +4,17 @@ namespace Chess.Core;
 
 public class ChessAi
 {
-    private readonly ChessBoard _board;
-    private readonly ChessBoardSolver _solver;
+    private readonly Board _board;
+    private readonly BoardSearch _search;
 
-    public ChessAi(ChessBoard board, ChessBoardSolver solver)
+    public ChessAi(Board board, BoardSearch search)
     {
         _board = board;
-        _solver = solver;
+        _search = search;
     }
 
     public Move GetNextMove()
     {
-        var moves = _solver.EvaluateMoves(_board);
-        return moves.Length == 0 ? new Move() : moves.MaxBy(move => move.Score).Move;
+        return _search.SearchBestMove(_board);
     }
 }
